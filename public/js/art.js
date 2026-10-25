@@ -7,6 +7,7 @@
  * 規則（是否倒塌）一律由 rules.js 決定，這裡只依結果演出。
  */
 import * as THREE from '../vendor/three.module.min.js';
+import { SkyDirector } from './sky.js';
 
 const R = window.HouseRules;
 const FH = R.FLOOR_H;
@@ -152,7 +153,7 @@ export class Board {
     this.renderer.shadowMap.enabled = !opts.noShadow;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(36, 1, 0.5, 600);
+    this.camera = new THREE.PerspectiveCamera(36, 1, 0.5, 9000);
     this.cfg = { size: 4, ground: 8, amp: 4.4, tol: 0.3 };
     this.entries = []; // {group, x, z, i}
     this.debris = [];
@@ -170,6 +171,7 @@ export class Board {
     this._geoCache = null;
     this.buildEnvironment();
     this.buildCrane();
+    this.sky = new SkyDirector(this.scene, this.camera, { hemi: this.hemi, sun: this.sun });
     this.resize();
   }
 
@@ -239,19 +241,8 @@ export class Board {
     const rail = new THREE.Mesh(new THREE.BoxGeometry(27.5, 0.3, 0.3), pm); rail.position.set(0, 1.2, -6.8); city.add(rail);
     s.add(city);
 
-    // 雲
-    this.clouds = [];
-    const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x4a5a70 });
-    this.cloudMat = cloudMat;
-    const puff = new THREE.SphereGeometry(1, 12, 10);
-    for (let i = 0; i < 22; i++) {
-      const g = new THREE.Group();
-      const n = 3 + Math.floor(rng() * 3);
-      for (let k = 0; k < n; k++) { const m = new THREE.Mesh(puff, cloudMat); m.scale.set(2 + rng() * 1.6, 1.4 + rng() * 0.8, 1.8 + rng()); m.position.set(k * 2.2 - n, rng() * 0.8, rng() * 1.2); g.add(m); }
-      const a = rng() * Math.PI * 2, r = 55 + rng() * 50, y = 14 + i * 12 + rng() * 8;
-      g.position.set(Math.cos(a) * r, y, Math.sin(a) * r); g.rotation.y = rng() * 6; g.userData = { a, r, sp: 0.01 + rng() * 0.02 };
-      s.add(g); this.clouds.push(g);
-    }
+    this.clouds = []; // 雲層由 SkyDirector 依高度管理
+    this.cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
     // 氣球
     this.balloons = [];
     const balGeo = new THREE.SphereGeometry(0.75, 14, 12);
@@ -357,13 +348,13 @@ export class Board {
     if (!dg) { dg = buildDetail(this.cfg.size, FH, variant, color % 4, base); this._detailGeo.set(dk, dg); }
     const det = new THREE.Mesh(dg, detailMat); det.castShadow = true; det.receiveShadow = true; grp.add(det);
     // 奶油色頂板（沒有屋頂，樓層可以一直往上疊）
-    const cor = new THREE.Mesh(this._geoCache.cornice, new THREE.MeshLambertMaterial({ color: 0xf6efd0 }));
+    const cor = new THREE.Mesh(this._geoCache.cornice, this._cornMat || (this._cornMat = new THREE.MeshLambertMaterial({ color: 0xf6efd0 })));
     cor.position.y = FH * 0.5 - FH * 0.07; cor.castShadow = true; cor.receiveShadow = true; grp.add(cor);
     if (seat >= 0) { // 玩家色小色帶，多人時辨識誰放的
-      const band = new THREE.Mesh(this._geoCache.band, new THREE.MeshLambertMaterial({ color: new THREE.Color(PLAYER_COLORS[seat % PLAYER_COLORS.length]) }));
+      const band = new THREE.Mesh(this._geoCache.band, (this._bandMats = this._bandMats || {})[seat] || (this._bandMats[seat] = new THREE.MeshLambertMaterial({ color: new THREE.Color(PLAYER_COLORS[seat % PLAYER_COLORS.length]) })));
       band.position.y = FH * 0.5 - FH * 0.17; grp.add(band);
     }
-    const hatch = new THREE.Mesh(this._geoCache.hatch, new THREE.MeshLambertMaterial({ color: 0x6b6f77 }));
+    const hatch = new THREE.Mesh(this._geoCache.hatch, this._hatchMat || (this._hatchMat = new THREE.MeshLambertMaterial({ color: 0x6b6f77 })));
     hatch.position.set(this.cfg.size * 0.12, FH * 0.5 + FH * 0.005, -this.cfg.size * 0.05); grp.add(hatch);
     return grp;
   }
@@ -616,10 +607,11 @@ export class Board {
     }
 
     // 背景：隨高度改變天空
-    this.updateSky();
+    this.sky.reduceMotion = rm; this.sky.update(dt, this.camY, FH);
     for (const c of this.clouds) { c.userData.a += c.userData.sp * dt * 0.2; c.position.x = Math.cos(c.userData.a) * c.userData.r; c.position.z = Math.sin(c.userData.a) * c.userData.r; }
     for (const b of this.balloons) {
       const u = b.userData;
+      b.visible = this.sky.n < 42; if (!b.visible) continue;
       b.position.y += u.sp * dt; b.position.x = Math.cos(u.a + this.time * 0.03) * u.r + Math.sin(this.time * 0.8 + u.ph) * 0.4; b.position.z = Math.sin(u.a + this.time * 0.03) * u.r;
       if (b.position.y > this.altitude + 40) b.position.y = Math.max(-2, this.altitude - 16);
     }
@@ -744,27 +736,6 @@ export class Board {
     a && a.cb && a.cb.onDone && a.cb.onDone();
   }
 
-  updateSky() {
-    const y = this.altitude;
-    const stops = [
-      [0, 0x7ccbff, 0xcfeeff, 1.0, 1.7, 0],
-      [50, 0x8fc2ff, 0xdbe9ff, 0.95, 1.6, 0],
-      [95, 0xffa66e, 0xffd1a1, 0.85, 1.4, 0],
-      [140, 0x3b3f9c, 0x6a5fb0, 0.6, 0.9, 0.5],
-      [185, 0x0b1038, 0x1a2260, 0.45, 0.6, 1],
-    ];
-    let i = 0; while (i < stops.length - 2 && y > stops[i + 1][0]) i++;
-    const a = stops[i], b = stops[i + 1];
-    const t = clamp((y - a[0]) / (b[0] - a[0]), 0, 1);
-    const c1 = new THREE.Color(a[1]).lerp(new THREE.Color(b[1]), t);
-    const c2 = new THREE.Color(a[2]).lerp(new THREE.Color(b[2]), t);
-    this.scene.background.copy(c1); this.scene.fog.color.copy(c2);
-    this.hemi.intensity = lerp(a[3], b[3], t); this.sun.intensity = lerp(a[4], b[4], t);
-    this.stars.material.opacity = lerp(a[5], b[5], t);
-    this.cloudMat.emissive.setHex(y > 110 ? 0x30386a : 0x4a5a70);
-    this.sun.color.setHex(y > 80 ? 0xffd2a8 : 0xffffff);
-  }
-
   /* ----- 渲染 / 尺寸 ----- */
   resize() {
     const w = Math.max(1, this.canvas.clientWidth), h = Math.max(1, this.canvas.clientHeight);
@@ -791,6 +762,7 @@ export class Board {
     const cy = ty + Math.sin(pitch) * this.camDist + (Math.random() - 0.5) * sh * 0.9;
     this.camera.position.set(cx, cy, cz);
     this.camera.lookAt(tx, ty, tz);
+    this.camera.updateMatrixWorld(); this.sky.sync(this.camera);
     this.renderer.render(this.scene, this.camera);
   }
   dispose() {

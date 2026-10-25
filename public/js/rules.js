@@ -17,7 +17,7 @@
   'use strict';
 
   const FLOOR_H = 3.4; // 樓層高度（世界單位）；樓層近乎立方體，和參考作品一樣
-  const SKY_FLOORS = 60; // 登頂：達到此層數即結束（避免無限對局）
+  const SKY_FLOORS = Infinity; // 預設沒有樓層上限，背景一路換到太空與銀河；測試或特殊規則可用 createGame({ maxFloors })
   const PALETTE_COUNT = 8;
   const VARIANT_COUNT = 4;
   const EPS = 1e-6;
@@ -108,6 +108,7 @@
     const seed = (opts.seed >>> 0) || 1;
     const startLives = opts.lives || (mode === 'versus' ? D.versusLives : D.lives);
     const rng = mulberry32(seed);
+    const maxFloors = opts.maxFloors > 0 ? opts.maxFloors : SKY_FLOORS;
 
     const g = {
       seed, difficulty: diffKey, mode, D,
@@ -239,7 +240,7 @@
       // 結束條件
       if (g.mode === 'solo') { if (!p.alive) finish(); }
       else if (g.alive().length <= 1) finish();
-      if (!g.over && g.floors.length >= SKY_FLOORS) { g.summit = true; finish(); }
+      if (!g.over && g.floors.length >= maxFloors) { g.summit = true; finish(); }
       res.summit = g.summit;
       if (!g.over) { g.current = nextAliveIndex(g.current); }
       res.over = g.over; res.winnerId = g.winnerId;

@@ -72,6 +72,7 @@ export const sfx = {
   turn() { if (!ok()) return; const t = ctx.currentTime; tone(880, t, 0.14, { type: 'sine', peak: 0.12 }); tone(1175, t + 0.1, 0.18, { type: 'sine', peak: 0.1 }); },
   perfect(combo = 1) { if (!ok()) return; const t = ctx.currentTime; const base = 660 * Math.pow(1.0595, Math.min(combo, 8) * 2); [0, 0.07, 0.14].forEach((o, i) => tone(base * [1, 1.26, 1.5][i], t + o, 0.22, { type: 'triangle', peak: 0.2 })); },
   creak() { if (!ok()) return; const t = ctx.currentTime; tone(95, t, 0.5, { type: 'sawtooth', peak: 0.05, glide: 1.5 }); noise(t, 0.35, { peak: 0.04, freq: 300, q: 4 }); },
+  thunder() { if (!ok()) return; const t = ctx.currentTime; noise(t, 1.4, { peak: 0.09, freq: 140, q: 0.7 }); noise(t + 0.15, 0.9, { peak: 0.05, freq: 90, q: 0.5 }); },
   pop() { if (!ok()) return; const t = ctx.currentTime; tone(300, t, 0.09, { type: 'sine', peak: 0.15, glide: 2 }); },
 };
 

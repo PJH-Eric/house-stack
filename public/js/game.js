@@ -33,6 +33,8 @@ export function GameScreen(cfg) {
 
   const canvas = h('canvas', { class: 'stage-canvas', role: 'img', 'aria-label': '疊疊高樓 3D 遊戲畫面：吊車正在放下新的樓層' });
   const board = new Board(canvas);
+  board.sky.onStage = (name, k) => { if (k > 0 && !destroyed) toast(`進入「${name}」`, 2200); };
+  board.sky.onThunder = () => { if (!destroyed) A.sfx.thunder(); };
   const live = h('div', { class: 'sr-only', 'aria-live': 'polite' });
   const popLayer = h('div', { class: 'pop-layer', 'aria-hidden': 'true' });
 

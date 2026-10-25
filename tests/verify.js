@@ -74,10 +74,12 @@ async function test(name, fn) {
     const e = g.removePlayer('a'); assert.ok(e.wasTurn && !e.over && g.currentPlayer().id === 'b');
     const e2 = g.removePlayer('c'); assert.ok(e2.over && g.winnerId === 'b');
   });
-  await test('登頂：達到最高層數結束（不無限進行）', () => {
-    const g = mk({ lives: 3 });
+  await test('樓層上限：預設無上限；指定 maxFloors 時達到即登頂結束', () => {
+    const g0 = mk({ lives: 3 }); for (let i = 0; i < 150; i++) g0.drop({ d: 0 });
+    assert.ok(!g0.over && g0.height() === 151, '預設可蓋到 150+ 層');
+    const g = mk({ lives: 3, maxFloors: 60 });
     let r; let n = 0; while (!g.over && n++ < 200) r = g.drop({ d: 0 });
-    assert.ok(g.over && g.summit && g.height() === T.SKY_FLOORS && r.summit);
+    assert.ok(g.over && g.summit && g.height() === 60 && r.summit);
   });
   await test('穩定度：完美堆疊為 1，歪掉後降低；吊車時間反解正確', () => {
     const g = mk(); g.drop({ d: 0 }); assert.strictEqual(g.stability().stability, 1);
