@@ -1,0 +1,26 @@
+{
+  "name": "house-stack",
+  "version": "0.1.0",
+  "description": "疊疊高樓：3D 卡通城市蓋樓遊戲，吊車放樓層、重心穩定判定，單人、對電腦與線上多人",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "verify": "node tests/verify.js && node scripts/online-check.js",
+    "build:pages": "node scripts/build-pages.js",
+    "audit": "node scripts/layout-audit.js",
+    "screenshots": "node scripts/screenshots.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.47.0",
+    "socket.io-client": "^4.7.5"
+  }
+}

@@ -1,0 +1,17 @@
+# Render Blueprint：後端 Web Service（API + WebSocket/Socket.IO）。前端由 GitHub Pages 提供。
+# 注意：Render 不能修改既有服務的 region；已建立的服務不會因為更新這個檔案而搬遷。
+services:
+  - type: web
+    name: house-stack-server
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GAME_ALLOWED_ORIGIN
+        sync: false # 在 Render 後台填入前端網址，例如 https://<帳號>.github.io
