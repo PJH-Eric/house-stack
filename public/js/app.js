@@ -128,11 +128,11 @@ function tutorial() {
     ['會不會倒？', '樓層不會被裁切，而是看「重心」：每一層以上所有樓層的重心，必須落在它與下方樓層的重疊範圍內，否則從那一層以上整段倒塌。完全沒接到就直接掉下去。左邊的穩定度條越低，樓晃得越厲害。'],
     ['單人挑戰', '樓倒了會失去一顆愛心，愛心用完就結束。連續完美對齊有連擊加分，蓋到 60 層就登頂。紀錄會存在這台裝置上。'],
     ['輪流對戰', '電腦或線上好友輪流在同一棟樓上加蓋。讓樓倒塌的人失去一顆愛心，沒有愛心就淘汰，最後留下的人獲勝。每個人的樓層邊框有不同顏色，方便看出誰蓋的。'],
-    ['小技巧', '先蓋穩再求快：每次都對得很準，重心就會一直在中間。如果樓已經歪向一邊，下一層故意往反方向偏一點，可以把重心拉回來。用視角按鈕換個角度，更容易判斷有沒有對齊。'],
+    ['小技巧', '先蓋穩再求快：每次都對得很準，重心就會一直在中間。如果樓已經歪向一邊，下一層故意往反方向偏一點，可以把重心拉回來。吊車擺到正中間的瞬間放下，最容易「完美」。'],
     ['線上房間', '建立房間後可以分享「玩家連結」邀請朋友加入，或分享「觀戰連結」讓人觀看；房間裡可以加入電腦。沒有真人玩家時房間會自動關閉。'],
   ];
   const body = [...steps.map(([t, d], i) => h('section', { class: 'tut' }, h('span', { class: 'tut-n' }, i + 1), h('div', null, h('h3', null, t), h('p', null, d))))];
-  body.push(h('div', { class: 'keys wide' }, h('div', null, KeyCap('空白'), ' 放下樓層'), h('div', null, KeyCap('←'), KeyCap('→'), ' 轉動視角'), h('div', null, KeyCap('Esc'), ' 選單')));
+  body.push(h('div', { class: 'keys wide' }, h('div', null, KeyCap('空白'), ' 放下樓層'), h('div', null, KeyCap('Esc'), ' 選單')));
   return { el: Page({ title: '怎麼玩', back: { fn: () => go('home') }, children: body, narrow: true }) };
 }
 
@@ -439,7 +439,7 @@ function game(p) {
 }
 
 /* ---------------- 右上角設定入口（所有畫面） ---------------- */
-document.body.append(h('div', { class: 'gear-wrap' }, IconBtn({ ico: 'gear', label: '設定', size: 26, cls: 'gear-btn', onClick: () => openSettings() })));
+document.body.append(h('div', { class: 'gear-wrap' }, IconBtn({ ico: 'toolbox', label: '設定', size: 28, cls: 'gear-btn', onClick: () => openSettings() })));
 connectBanner();
 
 /* ---------------- 啟動 ---------------- */

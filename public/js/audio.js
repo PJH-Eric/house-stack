@@ -85,7 +85,7 @@ function schedule() {
   const spb = 0.34;
   while (nextT < ctx.currentTime + 0.6) {
     const i = beat % MELODY.length;
-    const hi = altitude > 45 ? 1 : 0;
+    const hi = altitude > 100 ? 1 : 0;
     if (i % 2 === 0 || beat % 8 === 5) {
       tone(note(MELODY[i], 0 + hi), nextT, 0.5, { type: 'sine', peak: 0.22, bus: musicGain });
       tone(note(MELODY[i], 1 + hi) * 1, nextT, 0.18, { type: 'triangle', peak: 0.06, bus: musicGain });

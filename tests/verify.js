@@ -22,12 +22,12 @@ async function test(name, fn) {
     const r2 = g.drop({ d: -0.1 }); assert.ok(r2.perfect && r2.combo === 2 && r2.gain > r1.gain, '連擊加分遞增');
     assert.strictEqual(g.height(), 3);
   });
-  await test('吊車軸向：奇偶層交替 X / Z，偏移只影響該軸', () => {
+  await test('吊車軸向：永遠沿畫面左右（X），偏移相對於頂層', () => {
     const g = mk();
     assert.strictEqual(g.swingSpec.axis, 'x');
     const a = g.drop({ d: 1.0 }); assert.ok(!a.toppled && a.placed.x === 1 && a.placed.z === 0);
-    assert.strictEqual(g.swingSpec.axis, 'z');
-    const b = g.drop({ d: -0.8 }); assert.ok(!b.toppled && b.placed.x === 1 && b.placed.z === -0.8);
+    assert.strictEqual(g.swingSpec.axis, 'x');
+    const b = g.drop({ d: -0.8 }); assert.ok(!b.toppled && Math.abs(b.placed.x - 0.2) < 1e-9 && b.placed.z === 0);
   });
   await test('重心判定：偏移過大，上方整段倒塌並扣命；地基保底', () => {
     const g = mk({ lives: 3 });

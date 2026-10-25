@@ -1,7 +1,7 @@
 /*
  * 對局畫面（單人／對電腦／線上共用）：3D 主區最大化、左側資訊欄（摘要＋聊天室）、
  * 底部操作列、疊在遊戲畫面上的結算 overlay（再來一局／回到房間／回到首頁）。
- * 操作：點一下畫面／按「放下」／空白鍵 = 放下吊車上的樓層；視角可旋轉 90°。
+ * 操作：點一下畫面／按「放下」／空白鍵 = 放下吊車上的樓層；鏡頭固定正對樓房。
  */
 import { h, icon, Btn, IconBtn, Modal, Hearts, Badge, toast, hasModal, KeyCap, ScrollArea } from './ui.js';
 import { Board, PLAYER_COLORS } from './art.js';
@@ -100,7 +100,7 @@ export function GameScreen(cfg) {
     summaryBox.append(ul);
     if (S.role === 'spectator') summaryBox.append(h('div', { class: 'sum-note spec' }, icon('eye', 16), ' 你是觀戰者，可以聊天但不能操作'));
     summaryBox.append(h('div', { class: 'keys' },
-      h('div', null, KeyCap('空白'), ' 放下樓層'), h('div', null, KeyCap('←'), KeyCap('→'), ' 轉動視角'), h('div', null, KeyCap('Esc'), ' 選單'),
+      h('div', null, KeyCap('空白'), ' 放下樓層'), h('div', null, KeyCap('Esc'), ' 選單'),
       h('div', { class: 'keys-note' }, '觸控：點一下畫面或按「放下」。樓層重心要落在下方樓層的重疊範圍內，否則整段會倒！')));
   }
   function syncUnread() { unreadBadge.hidden = !S.unread; unreadBadge.textContent = S.unread > 9 ? '9+' : S.unread; }
@@ -111,18 +111,20 @@ export function GameScreen(cfg) {
   const infoBtn = Btn({ ico: 'info', label: '資訊', size: 'sm', onClick: () => togglePanel(), badge: null, cls: 'info-btn' });
   infoBtn.append(unreadBadge);
   const menuBtn = IconBtn({ ico: 'home', label: online ? '離開房間' : '暫停選單', onClick: () => openMenu(), size: 20, cls: 'menu-btn' });
-  const heightChip = h('div', { class: 'hud-chip' }, h('small', null, '樓層'), h('b', null, '1'));
+  const heightChip = h('div', { class: 'hud-chip', role: 'img', 'aria-label': '目前樓層' }, h('b', null, '1'));
+  const towerIco = h('span', { class: 'hud-tower', 'aria-hidden': 'true' });
+  towerIco.innerHTML = '<svg viewBox="0 0 24 56" width="30" height="70"><path fill="#f2b632" stroke="#a8741a" stroke-width="1.2" d="M12 1l1.2 8h-2.4L12 1Zm-3.5 9h7l-.8 8h2.3l-.5 6h-3l.6 5h2l1.4 18h-12l1.4-18h2l.6-5h-3l-.5-6h2.3l-.8-8Z"/><rect x="9" y="33" width="6" height="6" rx="3" fill="#fff6c9"/></svg>';
+  const hudCol = h('div', { class: 'hud-col' }, towerIco, heightChip);
   const stabMini = h('div', { class: 'stab mini ok', 'aria-hidden': 'true' }, h('i'));
+  const starIco = h('span', { class: 'star-ico', 'aria-hidden': 'true' });
+  starIco.innerHTML = '<svg viewBox="-12 -12 24 24" width="44" height="44"><path fill="#ffd23c" stroke="#d9941a" stroke-width="1.4" stroke-linejoin="round" d="M0-10l2.9 6.2 6.8.8-5 4.6 1.4 6.7L0 4.8l-6.1 3.5 1.4-6.7-5-4.6 6.8-.8Z"/></svg>';
   const heartsCol = h('div', { class: 'hud-hearts', 'aria-label': '剩餘愛心' });
-  const hudBL = h('div', { class: 'hud-bl' }, heightChip, heartsCol);
-  const topbar = h('div', { class: 'topbar' }, h('div', { class: 'tb-left' }, infoBtn, menuBtn), h('div', { class: 'tb-center' }, banner, timerEl), h('div', { class: 'tb-right' }, stabMini));
+  const hudBL = h('div', { class: 'hud-bl' }, hudCol, heartsCol);
+  const topbar = h('div', { class: 'topbar' }, h('div', { class: 'tb-left' }, infoBtn, menuBtn), h('div', { class: 'tb-center' }, banner, timerEl), h('div', { class: 'tb-right' }, starIco, stabMini));
 
-  const btnViewL = Btn({ ico: 'rotL', label: null, ariaLabel: '向左轉動視角', title: '向左轉動視角（←）', size: 'lg', onClick: () => rotateView(-1), cls: 'ctl-btn c-rl' });
-  const btnViewR = Btn({ ico: 'rotR', label: null, ariaLabel: '向右轉動視角', title: '向右轉動視角（→）', size: 'lg', onClick: () => rotateView(1), cls: 'ctl-btn c-rr' });
   const btnDrop = Btn({ ico: 'drop', label: '放下', kind: 'primary', size: 'lg', keycap: '空白', onClick: () => drop(), cls: 'drop-btn' });
-  const controls = h('div', { class: 'controls' }, btnViewL, btnDrop, btnViewR);
-  const specBar = h('div', { class: 'spec-bar' }, btnViewL.cloneNode(true), icon('eye', 18), h('span', null, '觀戰中'), btnViewR.cloneNode(true));
-  specBar.firstChild.addEventListener('click', () => rotateView(-1)); specBar.lastChild.addEventListener('click', () => rotateView(1));
+  const controls = h('div', { class: 'controls' }, btnDrop);
+  const specBar = h('div', { class: 'spec-bar' }, icon('eye', 18), h('span', null, '觀戰中'));
   const view = h('div', { class: 'stage-view' }, canvas, popLayer, topbar, hudBL);
   const stage = h('main', { class: 'stage' }, view, S.role === 'spectator' ? specBar : controls, live);
   const root = h('div', { class: 'game' + (matchMedia('(min-width: 900px)').matches ? ' panel-open' : '') }, aside, stage);
@@ -135,7 +137,6 @@ export function GameScreen(cfg) {
   }
 
   /* ---------- 操作 ---------- */
-  function rotateView(dir) { board.rotateView(dir); A.sfx.click(); }
   function drop() {
     if (!S.canAct || board.busy || S.over) return;
     if (performance.now() - S.turnStartPerf < 380) return; // 吊車剛換手時避免誤觸
@@ -154,8 +155,6 @@ export function GameScreen(cfg) {
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     if (hasModal()) return;
     if (e.key === 'Escape' && !S.over && !S.resultShown) { e.preventDefault(); openMenu(); return; }
-    if (e.key === 'ArrowLeft') { e.preventDefault(); rotateView(-1); return; }
-    if (e.key === 'ArrowRight') { e.preventDefault(); rotateView(1); return; }
     if (!S.canAct || S.over) return;
     if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); if (document.activeElement && document.activeElement.blur && (e.key === ' ' || e.key === 'Enter')) document.activeElement.blur(); drop(); }
   }
@@ -327,7 +326,7 @@ export function GameScreen(cfg) {
     banner.textContent = text; banner.style.setProperty('--accent', color);
     if (S.mode === 'solo' || S.over || !S.deadline) timerEl.textContent = '';
     else { const left = Math.max(0, Math.ceil((S.deadline - Date.now()) / 1000)); timerEl.textContent = `${left}`; timerEl.classList.toggle('low', left <= 5); }
-    heightChip.lastChild.textContent = S.height;
+    heightChip.firstChild.textContent = S.height;
     const me = playerOf(S.myId);
     const lv = me ? me.lives : 0, mx = Math.max(S.maxLives, lv);
     const key = lv + '/' + mx; if (heartsCol.dataset.k !== key) { heartsCol.dataset.k = key; heartsCol.textContent = ''; heartsCol.append(Hearts(lv, mx)); }
