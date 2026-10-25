@@ -30,47 +30,105 @@ const rand = (a, b) => a + Math.random() * (b - a);
 
 /* ---------- 程式繪製貼圖 ---------- */
 const texCache = new Map();
-function wallTexture(color, variant, base) {
-  const key = `${color}-${variant}-${base ? 1 : 0}`;
+/* 樓層牆面只畫底色與細緻的磚縫；窗、陽台、柱子都是真正的 3D 幾何（見 buildDetail） */
+function wallTexture(hex) {
+  const key = 'w' + hex;
   if (texCache.has(key)) return texCache.get(key);
-  const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+  const S = 128, c = document.createElement('canvas'); c.width = c.height = S;
   const x = c.getContext('2d');
-  const wall = WALL[color % WALL.length];
-  // 牆面：上亮下暗的藍色，兩側有奶油色柱子（像參考圖的方塊樓層）
-  x.fillStyle = wall; x.fillRect(0, 0, S, S);
-  const g = x.createLinearGradient(0, 0, 0, S); g.addColorStop(0, 'rgba(255,255,255,.14)'); g.addColorStop(1, 'rgba(0,0,0,.16)');
+  x.fillStyle = hex; x.fillRect(0, 0, S, S);
+  const g = x.createLinearGradient(0, 0, 0, S); g.addColorStop(0, 'rgba(255,255,255,.16)'); g.addColorStop(1, 'rgba(0,0,0,.18)');
   x.fillStyle = g; x.fillRect(0, 0, S, S);
-  x.fillStyle = '#f4ecc8'; x.fillRect(0, 0, 16, S); x.fillRect(S - 16, 0, 16, S);
-  x.fillStyle = 'rgba(0,0,0,.14)'; x.fillRect(16, 0, 4, S); x.fillRect(S - 20, 0, 4, S);
-  x.fillStyle = '#f4ecc8'; x.fillRect(0, S - 22, S, 22); x.fillStyle = 'rgba(0,0,0,.12)'; x.fillRect(0, S - 22, S, 4);
-  const pane = (px, py, w, h) => {
-    const gg = x.createLinearGradient(0, py, 0, py + h); gg.addColorStop(0, '#d9f3ff'); gg.addColorStop(1, '#5ab4e8');
-    x.fillStyle = gg; x.fillRect(px, py, w, h);
-    x.fillStyle = 'rgba(255,255,255,.6)'; x.beginPath(); x.moveTo(px + 3, py + h - 3); x.lineTo(px + w * 0.5, py + 3); x.lineTo(px + w * 0.75, py + 3); x.lineTo(px + w * 0.28, py + h - 3); x.fill();
-    x.fillStyle = 'rgba(255,255,255,.9)'; x.fillRect(px, py, w, 6);
-  };
-  const frame = (px, py, w, h, cols = 2, rows = 1) => { // 棕色窗框 + 白色窗台
-    x.fillStyle = '#5a3418'; x.beginPath(); x.roundRect(px - 8, py - 8, w + 16, h + 16, 6); x.fill();
-    const gw = (w - 6 * (cols - 1)) / cols, gh = (h - 6 * (rows - 1)) / rows;
-    for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) pane(px + i * (gw + 6), py + j * (gh + 6), gw, gh);
-    x.fillStyle = '#fff'; x.fillRect(px - 12, py + h + 8, w + 24, 8); x.fillStyle = 'rgba(0,0,0,.18)'; x.fillRect(px - 12, py + h + 15, w + 24, 3);
-  };
-  const person = (cx, cy) => { x.fillStyle = '#ffd7b0'; x.beginPath(); x.arc(cx, cy, 9, 0, 7); x.fill(); x.fillStyle = '#e8453c'; x.beginPath(); x.arc(cx, cy - 3, 9, Math.PI, 0); x.fill(); x.fillRect(cx - 9, cy - 4, 18, 3); x.fillRect(cx - 8, cy + 9, 16, 14); };
-  const seed = (color * 7 + variant * 13) % 5;
-  if (base) { // 一樓：大門 + 兩扇窗
-    frame(30, 60, 50, 66, 2, 1); frame(176, 60, 50, 66, 2, 1);
-    x.fillStyle = '#5a3418'; x.beginPath(); x.roundRect(96, 100, 64, 134, [10, 10, 0, 0]); x.fill();
-    x.fillStyle = '#c47a3a'; x.beginPath(); x.roundRect(102, 106, 52, 128, [8, 8, 0, 0]); x.fill();
-    x.fillStyle = '#ffd35c'; x.beginPath(); x.arc(144, 175, 4, 0, 7); x.fill();
-  } else if (variant === 0) { frame(58, 54, 140, 100, 2, 1); if (seed % 2 === 0) person(150, 122); }
-  else if (variant === 1) { frame(40, 54, 66, 100, 1, 1); frame(150, 54, 66, 100, 1, 1); if (seed === 1) person(73, 132); }
-  else if (variant === 2) { frame(50, 46, 156, 84, 2, 1); x.fillStyle = '#7b4a24'; x.fillRect(46, 150, 164, 12); for (let i = 0; i < 5; i++) { x.fillStyle = ['#ff6b8b', '#ffd35c', '#fff'][i % 3]; x.beginPath(); x.arc(58 + i * 35, 148, 7, 0, 7); x.fill(); } }
-  else { frame(34, 58, 48, 88, 1, 2); frame(104, 58, 48, 88, 1, 2); frame(174, 58, 48, 88, 1, 2); }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-  texCache.set(key, t);
-  return t;
+  x.fillStyle = 'rgba(255,255,255,.10)'; for (let y = 0; y < S; y += 16) x.fillRect(0, y, S, 2);
+  x.fillStyle = 'rgba(0,0,0,.06)'; for (let y = 8; y < S; y += 16) for (let xx = (y / 8) % 2 ? 0 : 16; xx < S; xx += 32) x.fillRect(xx, y - 8, 2, 16);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  texCache.set(key, t); return t;
 }
+
+/* 依高度換色：每 5 層換一個色系（可愛不單調），同色系內再微調明暗 */
+const BAND = ['#2fa3dc', '#27b3a8', '#6bbf59', '#f2b632', '#ef7b5a', '#c46fd8', '#5b7be0', '#e86b9a'];
+const ACCENT = ['#ff6b4a', '#ffd23c', '#ffffff', '#2f6fd8'];
+export function wallColorFor(idx) { return idx <= 0 ? '#d98c5a' : BAND[Math.floor((idx - 1) / 5) % BAND.length]; }
+
+/* 手動合併盒子成單一幾何（頂點色），讓一層樓只需 3 個 draw call */
+function mergeBoxes(list) {
+  const pos = [], nor = [], col = [], idx = []; let off = 0;
+  for (const b of list) {
+    const g = new THREE.BoxGeometry(b.w, b.h, b.d); g.applyMatrix4(b.m);
+    const p = g.attributes.position, n = g.attributes.normal, c = new THREE.Color(b.color);
+    for (let i = 0; i < p.count; i++) { pos.push(p.getX(i), p.getY(i), p.getZ(i)); nor.push(n.getX(i), n.getY(i), n.getZ(i)); col.push(c.r, c.g, c.b); }
+    for (const k of g.index.array) idx.push(k + off);
+    off += p.count; g.dispose();
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  out.setIndex(idx);
+  return out;
+}
+const M4 = THREE.Matrix4;
+function boxAt(list, th, w, h, d, x, y, z, color, rx = 0) {
+  const m = new M4().makeRotationY(th).multiply(new M4().makeTranslation(x, y, z)).multiply(new M4().makeRotationX(rx));
+  list.push({ w, h, d, m, color });
+}
+
+/** 一層樓的立體細節：角柱、窗框/玻璃/窗台/窗楣、遮陽棚或陽台、基座線、頂板 */
+function buildDetail(s, FHt, variant, accentIdx, base) {
+  const L = [], acc = ACCENT[accentIdx % ACCENT.length];
+  const cream = '#f4ecc8', cream2 = '#e2d5a4', brown = '#5a3418', glass = '#9fd8f5', white = '#ffffff';
+  const half = s / 2, bh = FHt * 0.86, y0 = -FHt * 0.07, cyW = y0 - 0.02 * FHt;
+  const hh = FHt * 0.34;
+  // 角柱
+  for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) boxAt(L, 0, s * 0.1, bh, s * 0.1, sx * (half - s * 0.03), y0, sz * (half - s * 0.03), cream);
+  // 基座線與頂部飾帶
+  boxAt(L, 0, s * 1.04, FHt * 0.06, s * 1.04, 0, -FHt * 0.5 + FHt * 0.03, 0, cream2);
+  boxAt(L, 0, s * 1.03, FHt * 0.035, s * 1.03, 0, FHt * 0.36 - FHt * 0.02, 0, cream2);
+  const windowAt = (th, cx, cy, w, h, cols, o = {}) => {
+    const z = half;
+    boxAt(L, th, w + 0.2, h + 0.2, 0.16, cx, cy, z + 0.04, brown);
+    const gw = (w - 0.07 * (cols - 1)) / cols;
+    for (let i = 0; i < cols; i++) boxAt(L, th, gw, h, 0.08, cx - w / 2 + gw / 2 + i * (gw + 0.07), cy, z + 0.09, glass);
+    boxAt(L, th, w * 0.96, h * 0.12, 0.02, cx, cy + h * 0.44, z + 0.14, white); // 窗簾
+    boxAt(L, th, 0.05, h, 0.04, cx, cy, z + 0.14, brown); // 中梃（雙開窗的分隔）
+    if (o.cross) boxAt(L, th, w, 0.05, 0.04, cx, cy, z + 0.14, brown);
+    boxAt(L, th, w + 0.14, 0.1, 0.18, cx, cy + h / 2 + 0.17, z + 0.1, cream2); // 窗楣
+    if (o.balcony) {
+      const by = cy - h / 2 - 0.16, bw = w + 0.6, bd = 0.55;
+      boxAt(L, th, bw, 0.1, bd, cx, by, z + bd / 2 - 0.02, white);
+      boxAt(L, th, bw, 0.06, 0.06, cx, by + 0.42, z + bd - 0.05, acc);
+      boxAt(L, th, 0.06, 0.06, bd, cx - bw / 2 + 0.03, by + 0.42, z + bd / 2 - 0.02, acc);
+      boxAt(L, th, 0.06, 0.06, bd, cx + bw / 2 - 0.03, by + 0.42, z + bd / 2 - 0.02, acc);
+      for (let i = 0; i < 6; i++) boxAt(L, th, 0.04, 0.4, 0.04, cx - bw / 2 + 0.06 + i * ((bw - 0.12) / 5), by + 0.22, z + bd - 0.05, acc);
+      for (let i = 0; i < 4; i++) boxAt(L, th, 0.16, 0.14, 0.16, cx - bw * 0.3 + i * (bw * 0.2), by + 0.12, z + bd * 0.5, ['#ff6b8b', '#ffd23c', '#ffffff', '#ff8a4a'][i]);
+    } else boxAt(L, th, w + 0.4, 0.09, 0.3, cx, cy - h / 2 - 0.15, z + 0.12, white); // 窗台
+    if (o.awning) {
+      boxAt(L, th, w + 0.45, 0.06, 0.62, cx, cy + h / 2 + 0.36, z + 0.3, acc, -0.32);
+      boxAt(L, th, w + 0.45, 0.14, 0.05, cx, cy + h / 2 + 0.2, z + 0.56, white, 0);
+    }
+  };
+  for (const th of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    const front = th === 0;
+    if (base) {
+      if (front) {
+        windowAt(th, -s * 0.28, cyW + FHt * 0.06, s * 0.2, hh * 0.9, 2, { awning: true });
+        windowAt(th, s * 0.28, cyW + FHt * 0.06, s * 0.2, hh * 0.9, 2, { awning: true });
+        boxAt(L, th, s * 0.3, FHt * 0.56, 0.16, 0, -FHt * 0.5 + FHt * 0.28 + 0.06, half + 0.06, brown);
+        boxAt(L, th, s * 0.22, FHt * 0.5, 0.1, 0, -FHt * 0.5 + FHt * 0.25 + 0.06, half + 0.15, '#c47a3a');
+        boxAt(L, th, 0.12, 0.12, 0.08, s * 0.07, -FHt * 0.5 + FHt * 0.28, half + 0.22, '#ffd23c');
+        boxAt(L, th, s * 0.5, 0.07, 0.8, 0, -FHt * 0.5 + FHt * 0.6, half + 0.4, acc, -0.25);
+      } else windowAt(th, 0, cyW, s * 0.36, hh, 2, {});
+      continue;
+    }
+    const fb = th === 0 || th === Math.PI; // 只有正面／背面有遮陽棚與陽台，側面保持俐落輪廓
+    if (variant === 0) windowAt(th, 0, cyW, s * 0.46, hh, 2, { awning: fb });
+    else if (variant === 1) { windowAt(th, -s * 0.22, cyW, s * 0.2, hh * 1.1, 1, { cross: true }); windowAt(th, s * 0.22, cyW, s * 0.2, hh * 1.1, 1, { cross: true }); }
+    else if (variant === 2) windowAt(th, 0, cyW + 0.1, s * 0.42, hh, 2, { balcony: fb });
+    else { for (const k of [-1, 0, 1]) windowAt(th, k * s * 0.29, cyW, s * 0.15, hh, 1, { awning: fb && k !== 0, cross: true }); }
+  }
+  return mergeBoxes(L);
+}
+const detailMat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x18222c });
 
 function glassTexture() {
   const c = document.createElement('canvas'); c.width = 128; c.height = 160;
@@ -271,6 +329,7 @@ export class Board {
       band: new THREE.BoxGeometry(gs.size * 1.02, FH * 0.05, gs.size * 1.02),
       hatch: new THREE.BoxGeometry(gs.size * 0.2, FH * 0.07, gs.size * 0.2),
     };
+    this._detailGeo = null;
     this.lot.scale.set(Math.min(gs.ground * 2.2, gs.size * 3.4), 1, Math.min(gs.ground * 2.2, gs.size * 3.4));
     this.lot.position.y = -0.31 + 0.25 - 0.02;
     const g = this.guideBars; const s = gs.size;
@@ -280,13 +339,23 @@ export class Board {
     this.makeRoof();
   }
 
-  makeFloor(color, variant, seat, base) {
+  makeFloor(color, variant, seat, base, idx = 1) {
     const grp = new THREE.Group();
-    const tex = wallTexture(color, variant, base);
-    const side = new THREE.MeshLambertMaterial({ map: tex });
-    const plain = new THREE.MeshLambertMaterial({ color: 0xf4ecc8 });
+    const hex = wallColorFor(base ? 0 : idx);
+    const tone = [0.92, 1, 0.96][color % 3];
+    const mk = `${hex}-${tone}`;
+    this._wallMats = this._wallMats || new Map();
+    let side = this._wallMats.get(mk);
+    if (!side) { side = new THREE.MeshLambertMaterial({ map: wallTexture(hex), color: new THREE.Color(tone, tone, tone) }); this._wallMats.set(mk, side); }
+    const plain = this._plainMat || (this._plainMat = new THREE.MeshLambertMaterial({ color: 0xe9dfae }));
     const body = new THREE.Mesh(this._geoCache.body, [side, side, plain, plain, side, side]);
     body.position.y = -FH * 0.07; body.castShadow = true; body.receiveShadow = true; grp.add(body);
+    // 3D 細節（依樣式／配色快取，所有同款樓層共用同一份幾何）
+    const dk = `${variant}-${color % 4}-${base ? 1 : 0}`;
+    this._detailGeo = this._detailGeo || new Map();
+    let dg = this._detailGeo.get(dk);
+    if (!dg) { dg = buildDetail(this.cfg.size, FH, variant, color % 4, base); this._detailGeo.set(dk, dg); }
+    const det = new THREE.Mesh(dg, detailMat); det.castShadow = true; det.receiveShadow = true; grp.add(det);
     // 奶油色頂板（沒有屋頂，樓層可以一直往上疊）
     const cor = new THREE.Mesh(this._geoCache.cornice, new THREE.MeshLambertMaterial({ color: 0xf6efd0 }));
     cor.position.y = FH * 0.5 - FH * 0.07; cor.castShadow = true; cor.receiveShadow = true; grp.add(cor);
@@ -317,7 +386,7 @@ export class Board {
     this.afterTowerChange(true);
   }
   addEntry(f, i) {
-    const group = this.makeFloor(f.color, f.variant, f.seat, i === 0);
+    const group = this.makeFloor(f.color, f.variant, f.seat, i === 0, i);
     group.position.set(f.x, FH * (i + 0.5), f.z);
     this.scene.add(group);
     const e = { group, x: f.x, z: f.z, i, data: f };
@@ -348,7 +417,7 @@ export class Board {
     this.hold.vis = !!t;
     if (t) {
       if (this.heldFloor) this.holdSlot.remove(this.heldFloor);
-      this.heldFloor = this.makeFloor(t.swing.look.color, t.swing.look.variant, t.seat, false);
+      this.heldFloor = this.makeFloor(t.swing.look.color, t.swing.look.variant, t.seat, false, this.entries.length);
       this.holdSlot.add(this.heldFloor);
       this.holdPop = 0;
       this.holdSeat = t.seat;
@@ -386,7 +455,7 @@ export class Board {
     this.hold.vis = true;
     if (this.roof) this.roof.visible = false;
     this.dropFloor = this.heldFloor; this.heldFloor = null;
-    if (!this.dropFloor) this.dropFloor = this.makeFloor(placed.color, placed.variant, placed.seat, false);
+    if (!this.dropFloor) this.dropFloor = this.makeFloor(placed.color, placed.variant, placed.seat, false, n);
     this.holdSlot.remove(this.dropFloor); this.dropFloor.rotation.set(0, 0, 0);
     this.dropAxis = axis;
     // 重新依結果上色（保險：旋轉視角或重連時 look 可能不同）
