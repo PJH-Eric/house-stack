@@ -3,7 +3,7 @@
  * 底部操作列、疊在遊戲畫面上的結算 overlay（再來一局／回到房間／回到首頁）。
  * 操作：點一下畫面／按「放下」／空白鍵 = 放下吊車上的樓層；鏡頭固定正對樓房。
  */
-import { h, icon, Btn, IconBtn, Modal, Hearts, Badge, toast, hasModal, KeyCap, ScrollArea } from './ui.js';
+import { h, icon, Btn, IconBtn, Modal, Hearts, Badge, toast, hideToast, hasModal, KeyCap, ScrollArea } from './ui.js';
 import { Board, PLAYER_COLORS } from './art.js';
 import * as A from './audio.js';
 import { store } from './store.js';
@@ -33,7 +33,7 @@ export function GameScreen(cfg) {
 
   const canvas = h('canvas', { class: 'stage-canvas', role: 'img', 'aria-label': '疊疊高樓 3D 遊戲畫面：吊車正在放下新的樓層' });
   const board = new Board(canvas);
-  board.sky.onStage = (name, k) => { if (k > 0 && !destroyed) toast(`進入「${name}」`, 2200); };
+  board.sky.onStage = (name, k) => { if (k > 0 && !destroyed && !S.over) toast(`進入「${name}」`, 2200); };
   board.sky.onThunder = () => { if (!destroyed) A.sfx.thunder(); };
   const live = h('div', { class: 'sr-only', 'aria-live': 'polite' });
   const popLayer = h('div', { class: 'pop-layer', 'aria-hidden': 'true' });
@@ -122,7 +122,7 @@ export function GameScreen(cfg) {
   starIco.innerHTML = '<svg viewBox="-12 -12 24 24" width="44" height="44"><path fill="#ffd23c" stroke="#d9941a" stroke-width="1.4" stroke-linejoin="round" d="M0-10l2.9 6.2 6.8.8-5 4.6 1.4 6.7L0 4.8l-6.1 3.5 1.4-6.7-5-4.6 6.8-.8Z"/></svg>';
   const heartsCol = h('div', { class: 'hud-hearts', 'aria-label': '剩餘愛心' });
   const hudBL = h('div', { class: 'hud-bl' }, hudCol, heartsCol);
-  const windChip = h('div', { class: 'wind-chip', role: 'status', 'aria-live': 'polite' });
+  const windChip = h('div', { class: 'wind-chip', role: 'status', 'aria-live': 'off' });
   const windArrow = h('span', { class: 'wind-arrow', 'aria-hidden': 'true' });
   windArrow.innerHTML = '<svg viewBox="0 0 28 18" width="30" height="20"><path fill="currentColor" d="M1 7h17V3.2L27 9l-9 5.8V11H1z"/></svg>';
   const windTxt = h('b', null, ''); const windBars = h('span', { class: 'wind-bars', 'aria-hidden': 'true' }, ...[0, 1, 2, 3, 4].map(() => h('i')));
@@ -260,6 +260,7 @@ export function GameScreen(cfg) {
   /* ---------- 結算 overlay：疊在遊戲畫面上，不卸載 3D 場景 ---------- */
   let resultEl = null;
   function showResult() {
+    hideToast();
     if (destroyed || resultEl) return;
     S.resultShown = true;
     const solo = S.mode === 'solo';

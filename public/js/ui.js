@@ -304,6 +304,7 @@ export function Hearts(n, max, cls = '') {
 export function Badge(text, kind = '') { return h('span', { class: 'badge ' + kind }, text); }
 
 let toastEl = null, toastT = 0;
+export function hideToast() { clearTimeout(toastT); if (toastEl) toastEl.classList.remove('show'); }
 export function toast(msg, ms = 2400) {
   if (!toastEl) { toastEl = h('div', { class: 'toast', role: 'status', 'aria-live': 'polite' }); document.body.append(toastEl); }
   toastEl.textContent = msg; toastEl.classList.add('show');

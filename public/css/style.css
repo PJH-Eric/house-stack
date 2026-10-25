@@ -373,7 +373,7 @@ button, input { font: inherit; color: inherit; }
 .hud-hearts .hearts .ico.off { background: rgba(120,150,190,.45); fill: rgba(255,255,255,.55); box-shadow: none; }
 .controls { grid-template-columns: 1fr; }
 @media (max-width: 560px) { .topbar { flex-wrap: wrap; row-gap: 6px; } .tb-right { order: 2; margin-left: auto; } .tb-center { order: 3; flex: 1 0 100%; } .tb-right .stab.mini { width: 92px; } .star-ico svg { width: 36px; height: 36px; } }
-@media (orientation: landscape) and (max-height: 520px) { .controls { display: flex; justify-content: flex-end; } .drop-btn { grid-column: auto; } .hud-tower { display: none; } .hud-hearts .hearts .ico { width: 22px; height: 22px; } .hud-chip b { font-size: 1.3rem; } }
+@media (orientation: landscape) and (max-height: 520px) { .controls { display: flex; justify-content: flex-end; } .drop-btn { grid-column: auto; flex: none; width: 190px; } .hud-tower { display: none; } .hud-hearts .hearts .ico { width: 22px; height: 22px; } .hud-chip b { font-size: 1.3rem; } }
 
 /* ===== 風向指示 ===== */
 .wind-chip { position: absolute; right: calc(10px + var(--safe-r)); bottom: 10px; z-index: 4; display: flex; align-items: center; gap: 6px; padding: 5px 11px 5px 9px; border-radius: 14px; background: rgba(255,255,255,.94); border: 3px solid #fff; box-shadow: 0 3px 0 rgba(18,43,87,.4); color: #1d4a8a; pointer-events: none; }
