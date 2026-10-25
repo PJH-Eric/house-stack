@@ -2,7 +2,8 @@
  * 疊疊高樓 — 規則核心（UMD：Node 與瀏覽器共用，全域名稱 HouseRules）。
  *
  * 玩法（吊車投放 + 重心物理混合）：
- *  1. 吊車沿單一軸向左右擺盪（永遠沿畫面左右，鏡頭正對樓房），玩家在合適的瞬間放下新樓層。
+ *  1. 吊車沿單一軸向左右擺盪（永遠沿畫面左右，鏡頭正對樓房）。風：隨高度增強並有陣風，會把吊車擺盪中心吹偏（bias），
+ *     也會在樓層落下途中把它吹走一段（drift）；140 層以上的太空無風。，玩家在合適的瞬間放下新樓層。
  *  2. 樓層不會被裁切；偏移後保留完整尺寸，由「重心穩定」決定是否倒塌：
  *     對每個接合面 j（第 j 層坐在第 j-1 層上），j 層以上所有樓層的重心，
  *     必須落在 j 層與 j-1 層的重疊區域內；最低的違規接合面以上全部倒塌。
@@ -29,6 +30,21 @@
     hard: { label: '困難', size: 3.6, ground: 6, amp: 4.4, speed: 1.85, ramp: 0.02, maxSpeedMul: 2.1, tol: 0.2, lives: 2, versusLives: 1, turnSec: 20 },
   };
 
+  /** 風：bias = 吊車擺盪中心被吹偏的量；drift = 放下後落下途中被吹走的量（|風|=1 時的最大值，依難度） */
+  const WIND = {
+    kids: { bias: 0.4, drift: 0.35 }, easy: { bias: 0.8, drift: 0.7 },
+    normal: { bias: 1.2, drift: 1.1 }, hard: { bias: 1.6, drift: 1.5 },
+  };
+  const WIND_LIMIT = 2; // 放下位置的容許範圍 = 吊車振幅 + 這個值
+  /** 依高度的風力曲線：低樓層無風，逐漸增強，約 50–90 層最強（噴射氣流），之後減弱，140 層以上（太空）無風。 */
+  function windBase(n) {
+    if (n <= 2) return 0;
+    if (n <= 50) return (n - 2) / 48;
+    if (n <= 90) return 1;
+    if (n < 140) return (140 - n) / 50;
+    return 0;
+  }
+
   function mulberry32(a) {
     return function () {
       a |= 0; a = (a + 0x6d2b79f5) | 0;
@@ -41,11 +57,11 @@
   const r3 = (v) => Math.round(v * 1000) / 1000;
 
   /** 吊車位置：相對於頂層中心的偏移，t 為本回合開始後的秒數。 */
-  function swingPos(sw, tSec) { return sw.amp * Math.sin(sw.omega * tSec + sw.phase); }
+  function swingPos(sw, tSec) { return (sw.bias || 0) + sw.amp * Math.sin(sw.omega * tSec + sw.phase); }
 
   /** 求吊車下一次經過偏移 d 的時間（秒，>= tNow）。AI 用來決定何時放下。 */
   function timeToReach(sw, d, tNow) {
-    const x = clamp(d / sw.amp, -1, 1);
+    const x = clamp((d - (sw.bias || 0)) / sw.amp, -1, 1);
     const a = Math.asin(x); // sin(θ)=x 的兩族解：a + 2πk、π − a + 2πk
     let best = Infinity;
     for (const base of [a, Math.PI - a]) {
@@ -109,6 +125,7 @@
     const startLives = opts.lives || (mode === 'versus' ? D.versusLives : D.lives);
     const rng = mulberry32(seed);
     const maxFloors = opts.maxFloors > 0 ? opts.maxFloors : SKY_FLOORS;
+    const windOn = opts.wind !== false;
 
     const g = {
       seed, difficulty: diffKey, mode, D,
@@ -140,18 +157,27 @@
     /** 下一回合的吊車參數（由種子 + 回合序號決定，所有端點一致）。 */
     g.nextSwing = () => {
       const r = mulberry32((seed ^ Math.imul(g.turnNo + 7, 40503) ^ Math.imul(g.floors.length, 9973)) >>> 0);
-      return { axis: g.axis(), amp: D.amp, omega: r3(D.speed * speedMul()), phase: r3(r() * Math.PI * 2), look: visual(g.turnNo + 1 + g.floors.length * 131) };
+      const n = g.floors.length;
+      let wind = 0;
+      if (windOn) {
+        const dir = mulberry32((seed ^ Math.imul(Math.floor(n / 7) + 3, 2246822519)) >>> 0)() < 0.5 ? -1 : 1; // 每 7 層左右換一次風向
+        const gust = 0.35 + 0.65 * mulberry32((seed ^ Math.imul(g.turnNo + 11, 3266489917) ^ Math.imul(n, 101)) >>> 0)(); // 每回合陣風強弱不同
+        wind = r3(dir * windBase(n) * gust);
+      }
+      const W = WIND[diffKey];
+      return { axis: g.axis(), amp: D.amp, omega: r3(D.speed * speedMul()), phase: r3(r() * Math.PI * 2), look: visual(g.turnNo + 1 + g.floors.length * 131), wind, bias: r3(wind * W.bias), drift: r3(wind * W.drift) };
     };
     g.swingSpec = g.nextSwing();
 
     function placeAt(d) {
-      const dd = clamp(+d || 0, -D.amp, D.amp);
+      const dd = clamp(+d || 0, -(D.amp + WIND_LIMIT), D.amp + WIND_LIMIT);
       const top = g.top();
       const ax = g.axis();
-      let off = dd, perfect = false;
+      const drift = g.swingSpec ? g.swingSpec.drift || 0 : 0; // 落下途中被風吹走
+      let off = dd + drift, perfect = false;
       if (Math.abs(off) <= D.tol) { off = 0; perfect = true; }
       const nf = { x: top.x + (ax === 'x' ? off : 0), z: top.z + (ax === 'z' ? off : 0) };
-      return { nf, perfect, d: dd, off, axis: ax };
+      return { nf, perfect, d: dd, off, axis: ax, drift };
     }
 
     /** 不修改狀態的試算：AI 與預覽用。 */
@@ -197,14 +223,14 @@
       if (g.over) return null;
       const p = g.currentPlayer();
       const sw = g.swingSpec;
-      const { nf, perfect, d, off, axis } = placeAt(move && move.d);
+      const { nf, perfect, d, off, axis, drift } = placeAt(move && move.d);
       const look = sw.look;
       const placed = { x: r3(nf.x), z: r3(nf.z), color: look.color, variant: look.variant, seat: p.seat, perfect };
       const test = g.floors.concat([placed]);
       const ev = evaluate(test, D.size, D.ground);
       const toppled = ev.fallFrom >= 0;
       const res = {
-        no: g.turnNo + 1, playerId: p.id, seat: p.seat, d: r3(d), off: r3(off), axis, perfect, placed,
+        no: g.turnNo + 1, playerId: p.id, seat: p.seat, d: r3(d), drift: r3(drift), off: r3(off), axis, perfect, placed,
         toppled, missed: !!ev.missed, fallFrom: ev.fallFrom, fallen: [], pivot: null, gain: 0, combo: 0,
         eliminated: false, over: false, winnerId: null, summit: false,
         swing: sw,
@@ -283,6 +309,6 @@
 
   return {
     FLOOR_H, SKY_FLOORS, PALETTE_COUNT, VARIANT_COUNT, DIFFICULTIES, mulberry32, createGame,
-    swingPos, timeToReach, evaluate, axisFor, clamp,
+    swingPos, timeToReach, evaluate, axisFor, clamp, windBase, WIND,
   };
 });

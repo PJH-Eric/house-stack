@@ -103,11 +103,11 @@ function galaxyTexture() {
 export class SkyDirector {
   constructor(scene, camera, parts) {
     this.scene = scene; this.camera = camera; this.hemi = parts.hemi; this.sun = parts.sun;
-    this.n = 0; this.stage = 0; this.time = 0; this.rain = 0; this.flash = 0; this.flashIn = 4;
+    this.wind = 0; this.windS = 0; this.n = 0; this.stage = 0; this.time = 0; this.rain = 0; this.flash = 0; this.flashIn = 4;
     this.onStage = null; this.onThunder = null; this.reduceMotion = false;
     this.bgColor = new THREE.Color(); this.fogColor = new THREE.Color();
     this.rig = new THREE.Group(); scene.add(this.rig);
-    this.buildStars(); this.buildSun(); this.buildEarth(); this.buildPlanets(); this.buildClouds(); this.buildRain(); this.buildBolt();
+    this.buildStars(); this.buildSun(); this.buildEarth(); this.buildPlanets(); this.buildClouds(); this.buildRain(); this.buildBolt(); this.buildWindLines();
     this.pools = { bird: [], heli: [], plane: [] };
     this.timers = { bird: 2, heli: 6, plane: 5 };
   }
@@ -187,6 +187,16 @@ export class SkyDirector {
     for (let i = 0; i < 14; i++) { const g = mk(this.cirrusMat, 3, 15, 0.28, 1.8, 24); add(g, rand(250, 310), rand(0.3, 0.8)); } // 卷雲
   }
 
+  /* ---------- 風：順風飄的白色風線 ---------- */
+  setWind(w) { this.wind = w; }
+  buildWindLines() {
+    const N = 40; this.windN = N; this.windPos = new Float32Array(N * 6); this.windSeed = [];
+    for (let i = 0; i < N; i++) this.windSeed.push([rand(-28, 28), rand(-17, 17), -rand(8, 44), rand(0.7, 1.4)]);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(this.windPos, 3)); g.attributes.position.setUsage(THREE.DynamicDrawUsage);
+    this.windLines = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+    this.windLines.frustumCulled = false; this.rig.add(this.windLines);
+  }
+
   /* ---------- 雨與閃電 ---------- */
   buildRain() {
     const N = 420; this.rainN = N;
@@ -251,7 +261,7 @@ export class SkyDirector {
     g.add(trail); g.userData = { trail, len: 0 }; g.scale.setScalar(1.6); return g;
   }
   spawn(kind, camY) {
-    const dir = Math.random() < 0.5 ? 1 : -1;
+    const dir = Math.abs(this.windS) > 0.25 ? Math.sign(this.windS) : (Math.random() < 0.5 ? 1 : -1); // 飛行物順風飛
     if (kind === 'bird') {
       const flock = new THREE.Group(), cnt = 5 + Math.floor(rand(0, 4)), birds = [];
       for (let i = 0; i < cnt; i++) { const b = this.makeBird(); const k = Math.ceil(i / 2) * (i % 2 ? 1 : -1); b.position.set(-Math.abs(k) * 1.8 * dir, rand(-0.4, 0.4), k * 1.6); b.scale.setScalar(rand(0.7, 1.05)); b.rotation.y = dir > 0 ? 0 : Math.PI; flock.add(b); birds.push(b); }
@@ -276,7 +286,7 @@ export class SkyDirector {
       if (this.timers[kind] <= 0) { this.timers[kind] = rand(a, b); if (n >= lo && n <= hi && !rm) this.spawn(kind, camY); }
       const list = this.pools[kind];
       for (let i = list.length - 1; i >= 0; i--) {
-        const o = list[i], u = o.userData; o.position.x += u.dir * u.speed * dt;
+        const o = list[i], u = o.userData; o.position.x += (u.dir * u.speed + this.windS * 5) * dt;
         if (kind === 'bird') { u.t += dt; for (const b of u.birds) { const f = Math.sin(u.t * 9 + b.userData.ph) * 0.75; b.userData.l.rotation.z = f; b.userData.r.rotation.z = -f; } }
         else if (kind === 'heli') { u.rotor.rotation.y += dt * 38; u.tr.rotation.z += dt * 40; u.ph += dt; u.light.visible = Math.sin(u.ph * 5) > 0; o.position.y += Math.sin(u.ph * 0.9) * dt * 0.4; }
         else { u.len = Math.min(70, u.len + dt * 11); u.trail.scale.x = u.len / 1; u.trail.position.x = -(5.6 + u.len / 2); }
@@ -290,6 +300,7 @@ export class SkyDirector {
   /* ---------- 主更新 ---------- */
   update(dt, camY, FH) {
     this.time += dt; const n = camY / FH; this.n = n;
+    this.windS += (this.wind - this.windS) * Math.min(1, dt * 1.5); const ws = this.windS;
     const st = stageIndex(n);
     if (st !== this.stage) { const up = st > this.stage; this.stage = st; if (up && this.onStage) this.onStage(STAGES[st][1], st); }
     // 天空與光線
@@ -317,14 +328,24 @@ export class SkyDirector {
     if (this.rainLines.visible) {
       const p = this.rainPos;
       for (let j = 0; j < this.rainN; j++) {
-        const s = this.rainSeed[j]; s[1] -= s[3] * dt; if (s[1] < -16) s[1] += 32;
-        p[j * 6] = s[0]; p[j * 6 + 1] = s[1]; p[j * 6 + 2] = s[2]; p[j * 6 + 3] = s[0] - 0.12; p[j * 6 + 4] = s[1] - 1.5; p[j * 6 + 5] = s[2];
+        const s = this.rainSeed[j]; s[1] -= s[3] * dt; if (s[1] < -16) s[1] += 32; s[0] += ws * 9 * dt; if (s[0] > 26) s[0] -= 52; else if (s[0] < -26) s[0] += 52;
+        p[j * 6] = s[0]; p[j * 6 + 1] = s[1]; p[j * 6 + 2] = s[2]; p[j * 6 + 3] = s[0] - 0.12 - ws * 1.3; p[j * 6 + 4] = s[1] - 1.5; p[j * 6 + 5] = s[2];
       }
       this.rainLines.geometry.attributes.position.needsUpdate = true;
     }
+    // 風線
+    const wa = Math.abs(ws), showW = wa > 0.04 && !this.reduceMotion; this.windLines.visible = showW; this.windLines.material.opacity = 0.5 * Math.min(1, wa * 1.6);
+    if (showW) {
+      const p = this.windPos, len = 1.2 + 5 * wa;
+      for (let j = 0; j < this.windN; j++) {
+        const s = this.windSeed[j]; s[0] += ws * 34 * s[3] * dt; if (s[0] > 28) s[0] -= 56; else if (s[0] < -28) s[0] += 56;
+        p[j * 6] = s[0]; p[j * 6 + 1] = s[1]; p[j * 6 + 2] = s[2]; p[j * 6 + 3] = s[0] - Math.sign(ws) * len; p[j * 6 + 4] = s[1] + Math.sin(s[0] * 0.3) * 0.25; p[j * 6 + 5] = s[2];
+      }
+      this.windLines.geometry.attributes.position.needsUpdate = true;
+    }
     // 雲：緩緩飄移；到達範圍外再從另一側回來；各層只在對應高度附近才顯示（省效能）
     for (const c of this.clouds) {
-      c.position.x += c.userData.sp * dt; if (c.position.x > c.userData.span) c.position.x = -c.userData.span;
+      c.position.x += (c.userData.sp * 0.4 + ws * 6) * dt; if (c.position.x > c.userData.span) c.position.x = -c.userData.span; else if (c.position.x < -c.userData.span) c.position.x = c.userData.span;
       c.visible = Math.abs(c.position.y - camY) < 190;
     }
     // 地球

@@ -11,7 +11,7 @@ async function test(name, fn) {
 
 (async () => {
   console.log('規則核心');
-  const mk = (o = {}) => T.createGame({ seed: 11, difficulty: 'normal', mode: 'solo', ...o });
+  const mk = (o = {}) => T.createGame({ seed: 11, difficulty: 'normal', mode: 'solo', wind: false, ...o });
   await test('決定性：同種子、同操作 → 完全相同結果', () => {
     const run = () => { const g = mk(); const out = []; for (const d of [0, 0.5, -1.2, 0.1, 2.2, 0]) { const r = g.drop({ d }); out.push(r && [r.placed.x, r.placed.z, r.toppled, r.fallFrom]); } return JSON.stringify([out, g.publicState().floors]); };
     assert.strictEqual(run(), run());
@@ -28,6 +28,23 @@ async function test(name, fn) {
     const a = g.drop({ d: 1.0 }); assert.ok(!a.toppled && a.placed.x === 1 && a.placed.z === 0);
     assert.strictEqual(g.swingSpec.axis, 'x');
     const b = g.drop({ d: -0.8 }); assert.ok(!b.toppled && Math.abs(b.placed.x - 0.2) < 1e-9 && b.placed.z === 0);
+  });
+  await test('風：低樓層無風；風力隨高度增強、太空無風；落下途中會被吹走', () => {
+    assert.strictEqual(T.windBase(2), 0); assert.ok(T.windBase(30) > 0.5 && T.windBase(60) === 1 && T.windBase(100) < 1 && T.windBase(140) === 0);
+    const g = mk({ wind: true, difficulty: 'hard' });
+    assert.strictEqual(g.swingSpec.wind, 0, '一開始無風');
+    for (let i = 0; i < 60; i++) g.drop({ d: -g.swingSpec.drift });
+    const sw = g.swingSpec; assert.ok(Math.abs(sw.drift) > 0, '蓋高後有風');
+    assert.ok(Math.abs(sw.bias) <= T.WIND.hard.bias + 1e-9 && Math.abs(sw.drift) <= T.WIND.hard.drift + 1e-9);
+    const r = g.drop({ d: 0 }); assert.ok(Math.abs(r.off - sw.drift) < 1e-9 || r.perfect, '放在 0 會被吹偏 drift');
+    const g2 = mk({ wind: true }); for (let i = 0; i < 60; i++) g2.drop({ d: -g2.swingSpec.drift });
+    const s2 = g2.swingSpec; const r2 = g2.drop({ d: -s2.drift }); assert.ok(r2.perfect, '預判風向放置可以完美');
+    const spec = { amp: 4.4, omega: 1.5, phase: 0.3, bias: 1.2 };
+    const t = T.timeToReach(spec, 2.0, 0.5); assert.ok(Math.abs(T.swingPos(spec, t) - 2.0) < 1e-6, '含偏移的吊車時間反解正確');
+  });
+  await test('風：同種子同操作結果完全相同（決定性）', () => {
+    const run = () => { const g = mk({ wind: true, seed: 5 }); const o = []; for (let i = 0; i < 40; i++) { const r = g.drop({ d: 0.3 * Math.sin(i) }); o.push([r.placed.x, r.toppled]); } return JSON.stringify([o, g.swingSpec]); };
+    assert.strictEqual(run(), run());
   });
   await test('重心判定：偏移過大，上方整段倒塌並扣命；地基保底', () => {
     const g = mk({ lives: 3 });

@@ -13,6 +13,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
+  const WIND_ERR = { kids: 0.5, easy: 0.25, normal: 0.1, hard: 0.03 }; // 電腦估計風力的誤差（比例）
   const SIGMA = { kids: 1.25, easy: 0.62, normal: 0.3, hard: 0.15 };
 
   function gauss(rng) {
@@ -31,17 +32,21 @@
     const speedMul = game.swingSpec.omega / game.D.speed; // 吊車越快，電腦抓時機的誤差越大
     const sigma = (SIGMA[level] != null ? SIGMA[level] : SIGMA.normal) * (1 + 0.9 * (speedMul - 1));
     const tNow = (opts && opts.tNow) || 0;
-    let d = clamp(gauss(rng) * sigma, -amp, amp);
+    const sw = game.swingSpec, bias = sw.bias || 0, drift = sw.drift || 0;
+    const lo = bias - amp, hi = bias + amp; // 吊車這回合實際擺得到的範圍
+    const aim = -drift * (1 + gauss(rng) * (WIND_ERR[level] != null ? WIND_ERR[level] : 0.1)); // 電腦把風算進去（有估計誤差，難度越高越準）：瞄準「被風吹走後剛好落在中央」的位置
+    const clampS = (v) => clamp(v, lo, hi);
+    let d = clampS(aim + gauss(rng) * sigma);
     let why = 'aim';
 
     if (level === 'easy' && rng() < 0.2) {
-      if (game.probe(d).topple) { d = clamp(gauss(rng) * sigma * 0.6, -amp, amp); why = 'reaim'; }
+      if (game.probe(d).topple) { d = clampS(aim + gauss(rng) * sigma * 0.6); why = 'reaim'; }
     } else if (level === 'normal') {
       const pr = game.probe(d);
       if (pr.topple && rng() < 0.7) {
         // 在目標附近試幾個點，取第一個不會倒的
         for (const k of [0.4, -0.4, 0.8, -0.8, 1.2, -1.2]) {
-          const c = clamp(d + k, -amp, amp);
+          const c = clampS(d + k);
           if (!game.probe(c).topple) { d = c; why = 'reaim'; break; }
         }
       }
@@ -49,7 +54,7 @@
       // 候選：以瞄準點為中心 ±0.9，步距 0.15，挑 maxRatio 最小（最穩）者；同樣穩時偏好完美
       let best = null;
       for (let k = -6; k <= 6; k++) {
-        const c = clamp(d + k * 0.15, -amp, amp);
+        const c = clampS(d + k * 0.15);
         const pr = game.probe(c);
         const score = pr.maxRatio + (pr.topple ? 10 : 0) - (pr.perfect ? 0.05 : 0) + Math.abs(k) * 0.004;
         if (!best || score < best.score) best = { c, score };

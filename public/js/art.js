@@ -407,6 +407,7 @@ export class Board {
     this.turn = t ? { ...t, start: performance.now() } : null;
     this.hold.vis = !!t;
     if (t) {
+      this.sky.setWind(t.swing.wind || 0);
       if (this.heldFloor) this.holdSlot.remove(this.heldFloor);
       this.heldFloor = this.makeFloor(t.swing.look.color, t.swing.look.variant, t.seat, false, this.entries.length);
       this.holdSlot.add(this.heldFloor);
@@ -550,7 +551,7 @@ export class Board {
       a.t += dt; const k = smooth(clamp(a.t / 0.14, 0, 1));
       this.trolleyD = lerp(a.from, a.to, k);
       const p = a.posAt(this.trolleyD); this.dropFloor.position.set(p.x, n * FH + GAP + FH * 0.5, p.z);
-      if (k >= 1) { a.type = 'fall'; a.t = 0; a.vy = 0; a.y = this.dropFloor.position.y; a.px = p.x; a.pz = p.z; if (a.cb.onRelease) a.cb.onRelease(); }
+      if (k >= 1) { a.type = 'fall'; a.t = 0; a.vy = 0; a.y = this.dropFloor.position.y; a.y0 = a.y; a.px = p.x; a.pz = p.z; if (a.cb.onRelease) a.cb.onRelease(); }
     }
     // 繩子：從畫面上方的錨點垂到樓層頂的掛鉤
     const hp = this.holdPos();
@@ -574,8 +575,9 @@ export class Board {
     this.guideGroup.visible = !!showGuide;
     if (showGuide) {
       const topY = n * FH + 0.06;
-      this.guideGroup.position.set(hp.x, topY, hp.z);
-      const perfect = Math.abs(this.trolleyD) <= this.cfg.tol;
+      const drift = (this.turn.swing && this.turn.swing.drift) || 0, eff = this.trolleyD + drift;
+      const perfect = Math.abs(eff) <= this.cfg.tol;
+      this.guideGroup.position.set(top.x + (perfect ? 0 : eff), topY, hp.z); // 預測落點：已算入風的吹移
       this.guideMat.color.set(perfect ? 0x35e08a : 0xffffff);
       this.guideBeam.scale.y = 5.2; this.guideBeam.position.y = 2.6; this.guideBeam.visible = false;
     }
@@ -591,7 +593,7 @@ export class Board {
 
     // 搖晃：高度越高、重心越偏越明顯
     const N = Math.max(1, this.entries.length);
-    const baseAmp = (0.012 + 0.2 * this.sway * this.sway) * Math.min(N, 40) / 10 * (rm ? 0.3 : 1);
+    const baseAmp = (0.012 + 0.2 * this.sway * this.sway + 0.03 * Math.abs(this.sky.windS || 0)) * Math.min(N, 40) / 10 * (rm ? 0.3 : 1);
     const amp = baseAmp + this.jolt;
     this.jolt = Math.max(0, this.jolt - dt * 0.35);
     if (!(a && a.type === 'tip')) {
@@ -641,7 +643,7 @@ export class Board {
     a.vy -= 38 * dt; a.y += a.vy * dt;
     const landY = n * FH + FH * 0.5;
     if (res.missed) { // 完全沒接到：偏離塔身往下掉
-      f.position.y = a.y; a.sx = (a.sx || 0) + dt * 1.2; f.rotation.z += dt * 3.2 * (a.pz < 0 ? 1 : -1); f.rotation.x += dt * 2.1;
+      f.position.x += (res.drift || 0) * dt * 1.4; f.position.y = a.y; a.sx = (a.sx || 0) + dt * 1.2; f.rotation.z += dt * 3.2 * (a.pz < 0 ? 1 : -1); f.rotation.x += dt * 2.1;
       const top = this.entries[n - 1]; const dirx = res.axis === 'x' ? Math.sign(res.d || 1) : 0, dirz = res.axis === 'z' ? Math.sign(res.d || 1) : 0;
       f.position.x += dirx * dt * 2.4; f.position.z += dirz * dt * 2.4;
       if (a.y <= landY + 0.2 && !a.passed) { a.passed = true; this.shake = 0.5; a.cb.onImpact && a.cb.onImpact(0.35); }
@@ -672,6 +674,7 @@ export class Board {
       return;
     }
     f.position.y = a.y;
+    { const prog = clamp((a.y0 - a.y) / Math.max(0.01, a.y0 - landY), 0, 1); f.position.x = lerp(a.px, res.placed.x, prog * prog * (3 - 2 * prog)); } // 落下途中被風吹向最終位置
   }
 
   stepSettle(dt) {

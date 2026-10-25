@@ -103,7 +103,7 @@ export function GameScreen(cfg) {
     if (S.role === 'spectator') summaryBox.append(h('div', { class: 'sum-note spec' }, icon('eye', 16), ' 你是觀戰者，可以聊天但不能操作'));
     summaryBox.append(h('div', { class: 'keys' },
       h('div', null, KeyCap('空白'), ' 放下樓層'), h('div', null, KeyCap('Esc'), ' 選單'),
-      h('div', { class: 'keys-note' }, '觸控：點一下畫面或按「放下」。樓層重心要落在下方樓層的重疊範圍內，否則整段會倒！')));
+      h('div', { class: 'keys-note' }, '觸控：點一下畫面或按「放下」。樓層重心要落在下方樓層的重疊範圍內，否則整段會倒！越高風越大：風會把吊車吹偏，樓層落下時也會被吹走，白框是已算入風的預測落點。')));
   }
   function syncUnread() { unreadBadge.hidden = !S.unread; unreadBadge.textContent = S.unread > 9 ? '9+' : S.unread; }
 
@@ -122,12 +122,24 @@ export function GameScreen(cfg) {
   starIco.innerHTML = '<svg viewBox="-12 -12 24 24" width="44" height="44"><path fill="#ffd23c" stroke="#d9941a" stroke-width="1.4" stroke-linejoin="round" d="M0-10l2.9 6.2 6.8.8-5 4.6 1.4 6.7L0 4.8l-6.1 3.5 1.4-6.7-5-4.6 6.8-.8Z"/></svg>';
   const heartsCol = h('div', { class: 'hud-hearts', 'aria-label': '剩餘愛心' });
   const hudBL = h('div', { class: 'hud-bl' }, hudCol, heartsCol);
+  const windChip = h('div', { class: 'wind-chip', role: 'status', 'aria-live': 'polite' });
+  const windArrow = h('span', { class: 'wind-arrow', 'aria-hidden': 'true' });
+  windArrow.innerHTML = '<svg viewBox="0 0 28 18" width="30" height="20"><path fill="currentColor" d="M1 7h17V3.2L27 9l-9 5.8V11H1z"/></svg>';
+  const windTxt = h('b', null, ''); const windBars = h('span', { class: 'wind-bars', 'aria-hidden': 'true' }, ...[0, 1, 2, 3, 4].map(() => h('i')));
+  windChip.append(windArrow, windTxt, windBars);
+  function setWindUI(sw) {
+    const w = (sw && sw.wind) || 0, lvl = Math.min(5, Math.round(Math.abs(w) * 5));
+    windChip.classList.toggle('calm', lvl === 0); windArrow.style.transform = w < 0 ? 'scaleX(-1)' : '';
+    windTxt.textContent = lvl === 0 ? '無風' : `風 ${lvl} 級`;
+    [...windBars.children].forEach((b, i) => b.classList.toggle('on', i < lvl));
+    windChip.setAttribute('aria-label', lvl === 0 ? '目前無風' : `${w > 0 ? '向右' : '向左'}吹，風力 ${lvl} 級（最大 5 級）`);
+  }
   const topbar = h('div', { class: 'topbar' }, h('div', { class: 'tb-left' }, infoBtn, menuBtn), h('div', { class: 'tb-center' }, banner, timerEl), h('div', { class: 'tb-right' }, starIco, stabMini));
 
   const btnDrop = Btn({ ico: 'drop', label: '放下', kind: 'primary', size: 'lg', keycap: '空白', onClick: () => drop(), cls: 'drop-btn' });
   const controls = h('div', { class: 'controls' }, btnDrop);
   const specBar = h('div', { class: 'spec-bar' }, icon('eye', 18), h('span', null, '觀戰中'));
-  const view = h('div', { class: 'stage-view' }, canvas, popLayer, topbar, hudBL);
+  const view = h('div', { class: 'stage-view' }, canvas, popLayer, topbar, hudBL, windChip);
   const stage = h('main', { class: 'stage' }, view, S.role === 'spectator' ? specBar : controls, live);
   const root = h('div', { class: 'game' + (matchMedia('(min-width: 900px)').matches ? ' panel-open' : '') }, aside, stage);
 
@@ -174,6 +186,7 @@ export function GameScreen(cfg) {
     S.deadline = info.deadline || (S.sec ? Date.now() + S.sec * 1000 : 0);
     S.turnStartPerf = performance.now();
     board.setTurn({ swing: info.swing, t0: info.t0, offset: info.offset || 0, active: me, seat: seatOf(S.turnId) });
+    setWindUI(info.swing);
     if (info.stability) { S.stability = info.stability.stability; board.setStability(info.stability.maxRatio); }
     renderSummary(); syncControls();
     const p = playerOf(S.turnId);
