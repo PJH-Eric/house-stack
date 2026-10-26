@@ -81,7 +81,7 @@ node scripts/online-ui.js   # 3 個瀏覽器（房主／玩家／觀戰）的線
 
 ## 多語系、GA4、SEO 與其他非遊戲機制（沿用 shoot-balloon 等專案的做法）
 
-- **多語系**：繁體中文（預設）、简体中文、English。語言決定順序 `?lang=` → localStorage（key `game-island-lang`，與遊戲大廳／其他遊戲同源共用）→ 繁中。設定彈窗最上方可切換；首頁、設定、教學、大廳畫面切換後會重新載入以完整套用，對局／房間中不打斷，離開後套用。字典以**繁中原文當 key**：程式裡寫 `t('開始')`、含變數 `t('最高蓋到 {peak} 層', { peak })`；英文在 `locales.js`，簡體由 `python3 scripts/gen-hans.py`（OpenCC）產生，用語不理想寫進該腳本的 `OVERRIDES`。伺服器送出的中文訊息（房間錯誤、系統聊天）由 `net.js` 以 `tm()` 轉成目前語言。新增文字後 `npm test` 會檢查缺漏。
+- **多語系**：繁體中文（預設）、简体中文、English。語言決定順序 `?lang=` → localStorage（key `game-island-lang`，與遊戲大廳／其他遊戲同源共用）→ 繁中。設定按鈕旁的地球鈕（顯示 繁／简／EN）可切換；首頁、設定、教學、大廳畫面切換後會重新載入以完整套用，對局／房間中不打斷，離開後套用。字典以**繁中原文當 key**：程式裡寫 `t('開始')`、含變數 `t('最高蓋到 {peak} 層', { peak })`；英文在 `locales.js`，簡體由 `python3 scripts/gen-hans.py`（OpenCC）產生，用語不理想寫進該腳本的 `OVERRIDES`。伺服器送出的中文訊息（房間錯誤、系統聊天）由 `net.js` 以 `tm()` 轉成目前語言。新增文字後 `npm test` 會檢查缺漏。
 - **GA4**：`analytics.js` 只在 `pjh-eric.github.io` 且有 Measurement ID 時載入 Google tag；本機、預覽網址與 `file://` 完全不動作。只送固定維度的事件（`game_start`／`game_end`／`room_create`／`room_join`／`lobby_click`／`page_view` 與模式、難度、形狀、人數、結果、時長、語言），**不送暱稱、房號、種子或邀請 token**，並關閉廣告個人化。Measurement ID 預設為遊戲小小島共用的 ID，可用 repo 變數 `GA_MEASUREMENT_ID` 覆寫；沒有任何秘密放進前端。
 - **SEO**：`seo.config.json` ＋ `scripts/inject-seo.js` 在建置時把 title／description／canonical／Open Graph／Twitter／JSON-LD 與 GA 設定寫進 `dist/index.html`，並產生 `sitemap.xml`（`public/robots.txt` 指向它）；原始碼的 `public/index.html` 不會被改動。封面圖 `assets/images/cover.webp` 與圖示請換成正式美術。
 - **線上延遲徽章**：線上大廳／房間／線上對局時，右上角設定鈕左邊顯示往返延遲（≤30ms 綠、<100ms 黃、其餘紅），每 2.5 秒用 `latency:ping` 量測，離開線上畫面即停止。

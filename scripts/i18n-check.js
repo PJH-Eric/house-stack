@@ -45,11 +45,10 @@ const hantOnly = /[學習體機務對戰這個開關閉選單線連驗證計時�
     if (quick) { await quick.click(); await p.waitForTimeout(1500); await scan('房間'); }
     else fail(`[${lang}] 找不到快速加入按鈕`);
     if (errs.length) fail(`[${lang}] 頁面錯誤：${errs.join(';')}`);
-    // 切換語言：設定 → 語言 → 繁體中文，頁面重新載入後為繁中
+    // 切換語言：設定旁的語言按鈕 → 繁體中文，頁面重新載入後為繁中
     await p.evaluate(() => window.__app.go('home')); await p.waitForTimeout(400);
-    await p.click('.gear-btn'); await p.waitForTimeout(300);
-    await p.click('.modal .sel-btn'); await p.waitForTimeout(200);
-    await Promise.all([p.waitForNavigation({ timeout: 8000 }).catch(() => null), p.click('.sel-pop >> text=繁體中文')]);
+    await p.click('.lang-btn'); await p.waitForTimeout(300);
+    await Promise.all([p.waitForNavigation({ timeout: 8000 }).catch(() => null), p.click('.lang-opt >> text=繁體中文')]);
     await p.waitForTimeout(1200);
     const after = await p.evaluate(() => [document.documentElement.lang, document.body.innerText.includes('單人挑戰')]);
     if (after[0] !== 'zh-Hant' || !after[1]) fail(`[${lang}] 切換到繁中失敗：${after}`);

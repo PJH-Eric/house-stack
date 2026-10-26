@@ -1,7 +1,8 @@
 /* 疊疊高樓 — 主程式：路由、首頁、開局設定、教學、大廳、房間、設定彈窗、網路事件接線。 */
 import { Outage } from './outage.js';
 import { Latency } from './latency.js';
-import { t, withLang, getLang, setLang, onLangChange, SUPPORTED, LANG_NAMES } from './i18n.js';
+import { LangButton } from './langmenu.js';
+import { t, withLang, onLangChange } from './i18n.js';
 import { h, icon, Btn, IconBtn, Toggle, Slider, Stepper, Select, TextField, ScrollArea, Modal, Badge, Hearts, toast, Panel, KeyCap } from './ui.js';
 import { Board, webglSupported } from './art.js';
 import * as A from './audio.js';
@@ -185,8 +186,7 @@ function openSettings() {
   const mv = Slider({ label: t('音樂音量'), value: s.musicVol, min: 0, max: 100, step: 5, format: (v) => v + '%', onChange: (v) => store.set({ musicVol: v }) });
   const sv = Slider({ label: t('音效音量'), value: s.sfxVol, min: 0, max: 100, step: 5, format: (v) => v + '%', onChange: (v) => { store.set({ sfxVol: v }); } });
   sv.addEventListener('pointerup', () => A.sfx.tock(0.6));
-  const langSel = Select({ label: t('語言'), value: getLang(), options: SUPPORTED.map((v) => ({ value: v, label: LANG_NAMES[v] })), onChange: (v) => setLang(v) });
-  const body = [langSel, h('h3', { class: 'set-h' }, t('聲音')), tg.music, mv, tg.sfx, sv, h('h3', { class: 'set-h' }, t('操作與畫面')), tg.vib, tg.rm, tg.guide];
+  const body = [h('h3', { class: 'set-h' }, t('聲音')), tg.music, mv, tg.sfx, sv, h('h3', { class: 'set-h' }, t('操作與畫面')), tg.vib, tg.rm, tg.guide];
   settingsModal = Modal({
     title: t('設定'), body,
     actions: [Btn({ label: t('恢復預設'), onClick: () => { store.reset(); settingsModal.close(true); settingsModal = null; openSettings(); } }), Btn({ label: t('完成'), kind: 'primary', onClick: () => settingsModal.close() })],
@@ -479,7 +479,7 @@ function game(p) {
 /* ---------------- 右上角設定入口（所有畫面） ---------------- */
 net.net.statusHook = (st) => Outage.status(st);
 onLangChange(() => Latency.refresh());
-document.body.append(h('div', { class: 'gear-wrap' }, IconBtn({ ico: 'toolbox', label: t('設定'), size: 28, cls: 'gear-btn', onClick: () => openSettings() })));
+document.body.append(h('div', { class: 'gear-wrap' }, LangButton(), IconBtn({ ico: 'toolbox', label: t('設定'), size: 28, cls: 'gear-btn', onClick: () => openSettings() })));
 connectBanner();
 
 /* ---------------- 啟動 ---------------- */
