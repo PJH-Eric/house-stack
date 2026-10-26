@@ -33,8 +33,12 @@ function writeStored(v) { try { localStorage.setItem(KEY, v); } catch (e) { /* �
 let lang = readUrl() || readStored() || DEFAULT;
 const listeners = [];
 
+/* 變數與英文單複數：{n} 取代為數值；{n|floor|floors} 依 n 是否為 1 選單數／複數（只用於英文字典） */
 function fill(text, params) {
-  return params ? text.replace(/\{(\w+)\}/g, (m, k) => (params[k] == null ? m : String(params[k]))) : text;
+  if (!params) return text;
+  return text
+    .replace(/\{(\w+)\|([^|}]*)\|([^|}]*)\}/g, (m, k, one, many) => (params[k] == null ? many : Number(params[k]) === 1 ? one : many))
+    .replace(/\{(\w+)\}/g, (m, k) => (params[k] == null ? m : String(params[k])));
 }
 export function t(key, params) {
   const d = dicts[lang];

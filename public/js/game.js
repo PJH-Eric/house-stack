@@ -92,8 +92,8 @@ export function GameScreen(cfg) {
     const me = playerOf(S.myId);
     summaryBox.append(h('div', { class: 'sum-badges' }, Badge(solo ? t('單人挑戰') : online ? t('線上輪流') : t('對電腦輪流'), 'wood'), Badge(diffLabel(S.diff), 'toy')));
     summaryBox.append(h('div', { class: 'sum-stats' },
-      h('div', { class: 'stat' }, h('small', null, t('目前樓層')), h('b', null, S.height, h('em', null, t(' 層')))),
-      h('div', { class: 'stat' }, h('small', null, solo ? t('本局最高') : t('回合')), h('b', null, solo ? S.peak : S.turnNo, h('em', null, solo ? t(' 層') : t(' 次'))))));
+      h('div', { class: 'stat' }, h('small', null, t('目前樓層')), h('b', null, S.height, h('em', null, t(' 層', { n: S.height })))),
+      h('div', { class: 'stat' }, h('small', null, solo ? t('本局最高') : t('回合')), h('b', null, solo ? S.peak : S.turnNo, h('em', null, solo ? t(' 層', { n: S.peak }) : t(' 次', { n: S.turnNo }))))));
     if (solo) summaryBox.append(h('div', { class: 'stat wide' }, h('small', null, t('得分')), h('b', null, me ? me.score : 0), S.combo > 1 ? h('em', { class: 'combo' }, t(' 完美連擊 ×{combo}', { combo: S.combo })) : null));
     summaryBox.append(h('div', { class: 'stab-box' }, h('small', null, t('穩定度（太低樓會倒）')), h('div', { class: 'stab ' + stabClass(S.stability), role: 'meter', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(S.stability * 100) }, h('i', { style: { width: Math.round(S.stability * 100) + '%' } }))));
     if (solo) summaryBox.append(h('div', { class: 'sum-note' }, t('歷史最高 {v0} 層', { v0: Math.max(store.best(S.diff, S.shapes), S.peak) })));
@@ -293,7 +293,7 @@ export function GameScreen(cfg) {
       h('span', { class: 'dot', style: { background: PLAYER_COLORS[p.seat % PLAYER_COLORS.length] } }), h('span', null, p.name, p.id === S.myId ? t('（你）') : ''),
       p.id === S.winnerId ? icon('crown', 18) : null, h('em', null, t('{score} 分・倒 {topples} 次', { score: p.score, topples: p.topples })))));
     const statLine = h('div', { class: 'res-stats' },
-      h('div', null, h('small', null, solo ? t('最高樓層') : t('塔高')), h('b', null, (solo ? S.peak : S.height) + t(' 層'))),
+      h('div', null, h('small', null, solo ? t('最高樓層') : t('塔高')), h('b', null, (solo ? S.peak : S.height) + t(' 層', { n: solo ? S.peak : S.height }))),
       h('div', null, h('small', null, solo ? t('得分') : t('總回合')), h('b', null, solo ? (me ? me.score : 0) : S.turnNo)),
       solo ? h('div', null, h('small', null, t('最佳連擊')), h('b', null, '×' + S.bestCombo)) : null);
 

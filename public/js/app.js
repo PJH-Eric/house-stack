@@ -186,7 +186,7 @@ function openSettings() {
   const sv = Slider({ label: t('音效音量'), value: s.sfxVol, min: 0, max: 100, step: 5, format: (v) => v + '%', onChange: (v) => { store.set({ sfxVol: v }); } });
   sv.addEventListener('pointerup', () => A.sfx.tock(0.6));
   const langSel = Select({ label: t('語言'), value: getLang(), options: SUPPORTED.map((v) => ({ value: v, label: LANG_NAMES[v] })), onChange: (v) => setLang(v) });
-  const body = [h('h3', { class: 'set-h' }, t('語言')), langSel, h('h3', { class: 'set-h' }, t('聲音')), tg.music, mv, tg.sfx, sv, h('h3', { class: 'set-h' }, t('操作與畫面')), tg.vib, tg.rm, tg.guide];
+  const body = [langSel, h('h3', { class: 'set-h' }, t('聲音')), tg.music, mv, tg.sfx, sv, h('h3', { class: 'set-h' }, t('操作與畫面')), tg.vib, tg.rm, tg.guide];
   settingsModal = Modal({
     title: t('設定'), body,
     actions: [Btn({ label: t('恢復預設'), onClick: () => { store.reset(); settingsModal.close(true); settingsModal = null; openSettings(); } }), Btn({ label: t('完成'), kind: 'primary', onClick: () => settingsModal.close() })],
@@ -306,7 +306,7 @@ function lobby() {
       title: t('建立房間'),
       body: [Select({ label: t('難度'), value: diff, options: DIFF_OPTS, onChange: (v) => { diff = v; } }),
         Stepper({ label: t('人數上限'), value: maxP, min: 2, max: 4, onChange: (v) => { maxP = v; } }),
-        Stepper({ label: t('每人生命'), value: lives, min: 0, max: 5, format: (v) => (v === 0 ? t('預設') : v + t(' 顆')), onChange: (v) => { lives = v; } }),
+        Stepper({ label: t('每人生命'), value: lives, min: 0, max: 5, format: (v) => (v === 0 ? t('預設') : v + t(' 顆', { n: v })), onChange: (v) => { lives = v; } }),
         Select({ label: t('樓層形狀'), value: shapes, options: SHAPE_OPTS, onChange: (v) => { shapes = v; } })],
       actions: [Btn({ label: t('取消'), onClick: () => m.close() }), Btn({ label: t('建立'), kind: 'primary', onClick: async () => {
         m.close(true); setBusy(true, t('建立房間中…'));
@@ -407,7 +407,7 @@ function room() {
     sideBox.append(sec(t('房間設定'),
       isHost ? [Select({ label: t('難度'), value: v.settings.difficulty, options: DIFF_OPTS, onChange: (d) => net.emit('room:settings', { difficulty: d }) }),
         Stepper({ label: t('人數上限'), value: v.settings.maxPlayers, min: Math.max(2, seated.length), max: 4, onChange: (n) => net.emit('room:settings', { maxPlayers: n }) }),
-        Stepper({ label: t('每人生命'), value: v.settings.lives, min: 0, max: 5, format: (x) => (x === 0 ? t('預設') : x + t(' 顆')), onChange: (n) => net.emit('room:settings', { lives: n }) }),
+        Stepper({ label: t('每人生命'), value: v.settings.lives, min: 0, max: 5, format: (x) => (x === 0 ? t('預設') : x + t(' 顆', { n: x })), onChange: (n) => net.emit('room:settings', { lives: n }) }),
         Select({ label: t('樓層形狀'), value: v.settings.shapes || 'off', options: SHAPE_OPTS, onChange: (d) => net.emit('room:settings', { shapes: d }) })]
         : h('p', { class: 'muted' }, t('難度 {v0}・每人生命 {v1}・形狀 {label}・上限 {maxPlayers} 人（由房主設定）', { v0: diffLabel(v.settings.difficulty), v1: v.settings.lives || t('預設'), label: (SHAPE_OPTS.find((o) => o.value === (v.settings.shapes || 'off')) || SHAPE_OPTS[0]).label, maxPlayers: v.settings.maxPlayers }))));
     if (v.invite) {

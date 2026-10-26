@@ -20,7 +20,12 @@ export function nick() { return (store.get().nick || '').trim(); }
 export function randomNick() {
   const a = [t('小'), t('圓'), t('胖'), t('快樂'), t('勇敢'), t('呆呆'), t('輕輕'), t('穩穩')];
   const b = [t('建築師'), t('工頭'), t('松鼠'), t('小熊'), t('兔子'), t('企鵝'), t('貓咪'), t('狐狸')];
-  return (a[Math.floor(Math.random() * a.length)] + b[Math.floor(Math.random() * b.length)]).slice(0, 12);
+  let name = '';
+  for (let i = 0; i < 24; i++) { // 暱稱上限 12 字：多抽幾次挑不會被截斷的組合（英文單字較長）
+    name = a[Math.floor(Math.random() * a.length)] + b[Math.floor(Math.random() * b.length)];
+    if (name.length <= 12) return name;
+  }
+  return name.slice(0, 12);
 }
 export function ensureNick() {
   let n = nick();

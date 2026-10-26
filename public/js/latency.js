@@ -40,6 +40,7 @@ export const Latency = {
     on = !!on;
     if (on === active) return;
     active = on;
+    document.body.classList.toggle('has-latency', on); // 頁首標題避開徽章（CSS：.has-latency .page-head-gap）
     clearInterval(timer); timer = 0;
     if (active) { value = null; render(); probe(); timer = setInterval(probe, 2500); } else { value = null; render(); }
   },

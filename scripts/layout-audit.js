@@ -16,6 +16,16 @@ function auditPage() {
   if (document.documentElement.scrollWidth > vw + 1) out.push(`頁面水平溢出 scrollWidth=${document.documentElement.scrollWidth} > ${vw}`);
   for (const el of document.querySelectorAll('select, textarea, input[type=checkbox], input[type=radio], input[type=range], input[type=number], input[type=date], details, dialog')) out.push('原生控制項：' + el.tagName + ' ' + (el.type || ''));
   for (const el of document.querySelectorAll('input')) if (!el.closest('.tf')) out.push('輸入框未經自訂元件封裝');
+  // 文字被裁切：有文字的元素內容比盒子寬／高，且會被 overflow 或 ellipsis 截掉；或按鈕文字斷成過多行（多語系常見）
+  for (const el of document.querySelectorAll('.btn, .sel-btn, .badge, .tg-label, .stat small, .stat b, h1, h2, h3, .modal-head h2, .rr-main, .rr-sub, .seat, .notice')) {
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height || el.closest('[hidden]') || getComputedStyle(el).visibility === 'hidden') continue;
+    const cs = getComputedStyle(el);
+    if (cs.overflowX !== 'visible' && el.scrollWidth > el.clientWidth + 2 && !el.closest('.sa-view')) out.push(`文字被橫向裁切：${el.className} "${el.textContent.trim().slice(0, 24)}" ${el.scrollWidth}>${el.clientWidth}`);
+    if (cs.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 2) out.push(`文字被省略號截斷：${el.className} "${el.textContent.trim().slice(0, 24)}"`);
+    const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3;
+    if (el.matches('.btn, .sel-btn') && r.height > lh * 2.6 + 12) out.push(`按鈕文字斷成過多行：${el.className} "${el.textContent.trim().slice(0, 24)}" h=${Math.round(r.height)}`);
+  }
   for (const el of document.querySelectorAll('*')) {
     const cs = getComputedStyle(el);
     if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 2 && cs.scrollbarWidth !== 'none') out.push('可見原生捲軸：' + el.className);
@@ -59,7 +69,7 @@ function auditPage() {
     await p.evaluate(() => { window.__app.app.screen.debug.board.currentD = () => 4.4; }); // 人類故意放到沒接到，盡快走到結算
     for (let i = 0; i < 90 && !(await p.$('.result')); i++) {
       const t = await p.evaluate(() => document.querySelector('.turn-banner')?.textContent || '');
-      if (t.includes('輪到你')) await p.keyboard.press('Space');
+      if (/輪到你|你的回合|Your turn|轮到你/.test(t)) await p.keyboard.press('Space'); // 各語言的「輪到你」橫幅
       await p.waitForTimeout(1200);
     }
     if (await p.$('.result')) await check('結算 overlay'); else { bad++; console.log(`✘ [${key}] 沒有出現結算`); }

@@ -7,7 +7,8 @@ const { pathToFileURL } = require('url');
 const { clientKeys, serverKeys } = require('../scripts/i18n-keys');
 const root = path.join(__dirname, '..');
 const CJK = /[一-鿿]/;
-const vars = (s) => [...String(s).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
+const UNIT_KEYS = [' 層', ' 次', ' 顆'];
+const vars = (s) => [...String(s).replace(/\{(\w+)\|[^|}]*\|[^|}]*\}/g, '{$1}').matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().filter((v, i, a) => a.indexOf(v) === i).join(',');
 
 async function load(search, stored) {
   // 為每個情境產生獨立模組實例（i18n.js 在載入時決定語言）
@@ -42,7 +43,7 @@ async function load(search, stored) {
   for (const k of [...keys, ...dynamic]) {
     assert.ok(Object.prototype.hasOwnProperty.call(EN, k), '缺英文：' + k);
     assert.ok(Object.prototype.hasOwnProperty.call(HANS, k), '缺簡體：' + k + '（跑 python3 scripts/gen-hans.py）');
-    if (!k.includes('|')) assert.equal(vars(EN[k]), vars(k), '英文變數不一致：' + k);
+    if (!k.includes('|')) assert.equal(vars(EN[k]), UNIT_KEYS.includes(k) ? 'n' : vars(k), '英文變數不一致：' + k); // 單位字串（' 層'）由程式傳入 {n} 供英文單複數使用
     assert.equal(vars(HANS[k]), vars(k), '簡體變數不一致：' + k);
     assert.ok(!CJK.test(EN[k]), '英文含中文：' + k + ' → ' + EN[k]);
     assert.ok(EN[k].trim() !== '', '英文空白：' + k);
@@ -72,6 +73,9 @@ async function load(search, stored) {
   const en = await load('?lang=en', null);
   assert.equal(en.t('開始'), 'Start');
   assert.equal(en.t('最高蓋到 {peak} 層', { peak: 12 }), 'Best: 12 floors');
+  assert.equal(en.t('最高蓋到 {peak} 層', { peak: 1 }), 'Best: 1 floor', '英文單數');
+  assert.equal(en.t(' 次', { n: 1 }) + '|' + en.t(' 次', { n: 0 }), ' turn| turns', '單複數');
+  assert.equal(en.tm('還有 1 位玩家未準備'), '1 player is not ready yet');
   assert.equal(en.t('疊'), 'Stack');
   assert.equal(en.t('疊|2'), 'the');
   assert.equal(en.t('沒有這個字串'), '沒有這個字串', '查不到不顯示 key 代碼');
@@ -84,7 +88,7 @@ async function load(search, stored) {
   assert.equal(en.tm('只有房主能開始'), 'Only the host can start');
   assert.equal(en.tm('Eric 離開了房間'), 'Eric left the room');
   assert.equal(en.tm('第 3 局開始'), 'Round 3 begins');
-  assert.equal(en.tm('還有 2 位玩家未準備'), '2 player(s) are not ready yet');
+  assert.equal(en.tm('還有 2 位玩家未準備'), '2 players are not ready yet');
   assert.equal(en.tm('完全沒有翻譯的訊息'), '完全沒有翻譯的訊息');
   assert.equal(hans.tm('只有房主能開始'), '只有房主能开始');
   assert.equal(base.tm('只有房主能開始'), '只有房主能開始', '繁中原樣');

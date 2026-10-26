@@ -404,3 +404,9 @@ button, input { font: inherit; color: inherit; }
 .latency.is-warn { --dot: #f0a126; }
 .latency.is-bad { --dot: #e04444; border-color: #e04444; }
 @media (max-width: 420px) { .latency__unit { display: none; } }
+
+/* 多語系排版：英文標誌用較寬的方塊、單位與數字之間留空隙、線上頁標題避開延遲徽章 */
+html[lang="en"] .logo { flex-wrap: wrap; row-gap: 10px; gap: 5px; }
+html[lang="en"] .logo-blk { width: auto; min-width: 40px; height: 46px; padding: 0 8px; font-size: 1.05rem; letter-spacing: 0; }
+.stat b em { margin-left: .2em; }
+.has-latency .page-head-gap { width: 124px; }
