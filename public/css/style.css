@@ -30,6 +30,7 @@ button, input { font: inherit; color: inherit; }
 .center { text-align: center; }
 :focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation-duration: .001s !important; transition-duration: .001s !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001s !important; transition-duration: .001s !important; } }
 
 /* ---------- 按鈕（厚塑膠玩具） ---------- */
 .btn {

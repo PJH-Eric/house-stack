@@ -39,7 +39,7 @@ app.use((req, res, next) => {
   next();
 });
 app.get('/health', (req, res) => res.json({ ok: true, rooms: rm.rooms.size, uptime: Math.round(process.uptime()) }));
-app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], setHeaders: (res, file) => { if (file.includes(`${path.sep}vendor${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=604800'); } })); // 第三方函式庫快取 7 天，自己的程式每次驗證 ETag
 
 // ---------------- 房間管理與推播 ----------------
 let lobbyTimer = null;

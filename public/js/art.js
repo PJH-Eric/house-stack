@@ -54,7 +54,6 @@ export function wallStyle(idx) {
   const hue = q((200 + idx * 8.5) % 360, 3), l = q(0.5 + 0.05 * Math.sin(idx * 0.9), 0.02), sat = q(0.62 + 0.1 * Math.sin(idx * 0.37 + 1), 0.02);
   return { key: `h${hue}-${l.toFixed(2)}-${sat.toFixed(2)}`, color: new THREE.Color().setHSL(hue / 360, sat, l) };
 }
-export function wallColorFor(idx) { return '#' + wallStyle(idx).color.getHexString(); }
 
 /* 手動合併盒子成單一幾何（頂點色），讓一層樓只需 3 個 draw call */
 function mergeBoxes(list) {
@@ -146,7 +145,6 @@ function glassTexture() {
   }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t;
 }
-function roundedPoly(sides, r, h) { return new THREE.ConeGeometry(r, h, sides, 1); }
 
 /* ---------- 場景 ---------- */
 export class Board {
