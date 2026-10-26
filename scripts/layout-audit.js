@@ -17,7 +17,7 @@ function auditPage() {
   for (const el of document.querySelectorAll('select, textarea, input[type=checkbox], input[type=radio], input[type=range], input[type=number], input[type=date], details, dialog')) out.push('原生控制項：' + el.tagName + ' ' + (el.type || ''));
   for (const el of document.querySelectorAll('input')) if (!el.closest('.tf')) out.push('輸入框未經自訂元件封裝');
   // 文字被裁切：有文字的元素內容比盒子寬／高，且會被 overflow 或 ellipsis 截掉；或按鈕文字斷成過多行（多語系常見）
-  for (const el of document.querySelectorAll('.btn, .sel-btn, .badge, .tg-label, .stat small, .stat b, .turn-banner, h1, h2, h3, .modal-head h2, .rr-main, .rr-sub, .seat, .notice')) {
+  for (const el of document.querySelectorAll('.btn, .sel-btn, .sel-text, .badge, .tg-label, .stat small, .stat b, .turn-banner, h1, h2, h3, .modal-head h2, .rr-main, .rr-sub, .seat, .notice')) {
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height || el.closest('[hidden]') || getComputedStyle(el).visibility === 'hidden') continue;
     const cs = getComputedStyle(el);
@@ -26,6 +26,7 @@ function auditPage() {
     const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3;
     if (el.matches('.btn, .sel-btn') && r.height > lh * 2.6 + 12) out.push(`按鈕文字斷成過多行：${el.className} "${el.textContent.trim().slice(0, 24)}" h=${Math.round(r.height)}`);
   }
+  for (const v of document.querySelectorAll('.sa-view:not(.sa-x)')) if (v.scrollWidth > v.clientWidth + 2 && v.getBoundingClientRect().width) out.push(`捲動區內容橫向溢出：${(v.parentElement && v.parentElement.className) || ''} ${v.scrollWidth}>${v.clientWidth}`);
   for (const el of document.querySelectorAll('*')) {
     const cs = getComputedStyle(el);
     if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 2 && cs.scrollbarWidth !== 'none') out.push('可見原生捲軸：' + el.className);
@@ -57,6 +58,8 @@ function auditPage() {
     await p.evaluate(() => window.__app.go('setup', { mode: 'vs' })); await check('對電腦設定');
     await p.evaluate(() => window.__app.go('tutorial')); await check('教學');
     await p.evaluate(() => window.__app.go('lobby')); await p.waitForTimeout(700); await check('大廳');
+    await p.click('.lobby-actions .autofocus'); await p.waitForSelector('.room-page', { timeout: 8000 }).catch(() => {}); await p.waitForTimeout(600); await check('房間'); // 快速加入 → 房間頁
+    await p.evaluate(() => window.__app.go('home')); await p.waitForTimeout(500);
     await p.evaluate(() => window.__app.go('game', { kind: 'local', mode: 'versus', diff: 'normal', players: [{ id: 'me', name: 'Eric', kind: 'human' }, { id: 'ai1', name: '電腦1', kind: 'ai', ai: 'hard' }], lives: 2, setupMode: 'vs' }));
     await p.waitForTimeout(1200); await check('對局');
     await p.click('.info-btn'); await p.waitForTimeout(1200); await check('對局(資訊欄切換後)');

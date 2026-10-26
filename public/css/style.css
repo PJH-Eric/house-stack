@@ -195,7 +195,7 @@ button, input { font: inherit; color: inherit; }
 
 /* ---------- 房間 ---------- */
 .room-page .page-inner { max-width: 1040px; }
-.room-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+.room-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 900px) { .room-grid { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "main side" "main chat"; } .room-main { grid-area: main; } .room-side { grid-area: side; } .room-chat { grid-area: chat; } }
 .room-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .rh-code small { display: block; font-size: .72rem; color: var(--ink-2); font-weight: 800; letter-spacing: .1em; }
@@ -437,3 +437,15 @@ html[lang="en"] .logo-blk { width: auto; min-width: 40px; height: 46px; padding:
 
 /* 窄版：回合提示（含限時倒數）放不下就換行，不用省略號截斷 */
 @media (max-width: 420px) { .turn-banner { white-space: normal; text-overflow: clip; line-height: 1.15; } }
+
+/* 房間頁：網格欄位不被內容撐寬（320px 直向不再橫向溢出） */
+.seats, .room-actions, .room-main, .room-side, .room-chat { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.room-actions { display: grid; }
+.seat-ai .row-ctl { flex-wrap: wrap; row-gap: 6px; }
+.seat-ai .sel { min-width: 0; }
+.room-row { grid-template-columns: minmax(0, 1fr) auto; }
+@media (max-width: 420px) { .room-row { grid-template-columns: minmax(0, 1fr); } .rr-act { grid-column: 1; grid-row: auto; flex-wrap: wrap; } .rr-act .btn { flex: 1 1 auto; } }
+@media (max-width: 420px) { .seat-ai .row-ctl { flex-direction: column; align-items: stretch; gap: 6px; padding: 4px 0; } .seat-ai .row-select .sel, .seat-ai .sel { width: 100%; max-width: none; } .seat-ai .btn { align-self: flex-start; } }
+/* 下拉選單文字放不下就換行，不用省略號截斷（多語系長文字） */
+.sel-text { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.2; text-align: left; }
+.seat-ai .row-select .sel, .seat-ai .sel { width: auto; flex: 1 1 150px; max-width: none; }
