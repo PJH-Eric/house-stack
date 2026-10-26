@@ -318,7 +318,9 @@ export class Board {
 
   /* ----- 設定 / 資料 ----- */
   setConfig(gs) {
-    this.cfg = { size: gs.size, ground: gs.ground, amp: gs.amp, tol: gs.tol };
+    if (this._detailGeo) for (const g of this._detailGeo.values()) g.dispose(); // 換局時釋放舊的幾何，避免越玩越多
+    if (this._geoCache) for (const g of Object.values(this._geoCache)) g.dispose();
+    this.cfg = { size: gs.size, ground: gs.ground, amp: gs.amp, tol: gs.tol, shapes: gs.shapes || 'off' };
     this._geoCache = {
       body: new THREE.BoxGeometry(gs.size, FH * 0.86, gs.size),
       cornice: new THREE.BoxGeometry(gs.size * 1.07, FH * 0.14, gs.size * 1.07),
@@ -767,7 +769,9 @@ export class Board {
   render() {
     // 鏡頭距離：同時容納吊車橫向範圍與塔頂上下範圍
     const vFov = THREE.MathUtils.degToRad(this.camera.fov);
-    const needH = 25, needW = 16;
+    if (this.turn && this.turn.swing.look) this.lastW = this.turn.swing.look.w || 1;
+    const lw = this.cfg.shapes === 'every' ? 1.5 : (this.cfg.shapes === 'fixed' ? (this.lastW || 1) : 1); // 樓層變寬時鏡頭要退後，整局固定不會忽遠忽近
+    const needH = 25, needW = Math.max(16, 2 * ((this.cfg.amp || 4.4) + (this.cfg.shapes === 'off' ? 1.2 : 1.8) + (this.cfg.size || 4) * lw / 2) + 1);
     const dH = needH / (2 * Math.tan(vFov / 2));
     const dW = needW / (2 * Math.tan(vFov / 2) * this.aspect);
     const dist = Math.max(dH, dW, 34);

@@ -46,7 +46,7 @@ const ok = (c, m) => { if (!c) { bad++; console.log('✘ ' + m); } else console.
     const taps = async (p) => { const can = await p.evaluate(() => { const d = window.__app.app.screen.debug; return d.S.canAct && !d.board.busy; }); return can; };
     // 先正常放兩層（看到同步），再故意放偏直到結束
     let turns = 0, shotGame = false;
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < 320; i++) {
       for (const p of [host, guest]) {
         if (await p.$('.result')) continue;
         if (await taps(p)) {
