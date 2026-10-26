@@ -449,3 +449,5 @@ html[lang="en"] .logo-blk { width: auto; min-width: 40px; height: 46px; padding:
 /* 下拉選單文字放不下就換行，不用省略號截斷（多語系長文字） */
 .sel-text { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.2; text-align: left; }
 .seat-ai .row-select .sel, .seat-ai .sel { width: auto; flex: 1 1 150px; max-width: none; }
+/* 窄版結算層蓋過右上角語言／設定鈕，避免壓在標題上（結算層內已有三個動作鈕） */
+@media (max-width: 560px) { body:has(.result) .gear-wrap { z-index: 20; } }

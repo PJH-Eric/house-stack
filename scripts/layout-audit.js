@@ -26,6 +26,14 @@ function auditPage() {
     const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3;
     if (el.matches('.btn, .sel-btn') && r.height > lh * 2.6 + 12) out.push(`按鈕文字斷成過多行：${el.className} "${el.textContent.trim().slice(0, 24)}" h=${Math.round(r.height)}`);
   }
+  for (const f of document.querySelectorAll('.gear-wrap > *')) { // 右上角固定鈕不可蓋住結算層的標題或按鈕
+    const fr = f.getBoundingClientRect(); if (f.hidden || !fr.width) continue;
+    for (const t of document.querySelectorAll('.result h2, .result .btn')) {
+      const tr = t.getBoundingClientRect();
+      const w = Math.min(fr.right, tr.right) - Math.max(fr.left, tr.left), hh = Math.min(fr.bottom, tr.bottom) - Math.max(fr.top, tr.top);
+      if (w > 3 && hh > 3) { const top = document.elementFromPoint(Math.max(fr.left, tr.left) + w / 2, Math.max(fr.top, tr.top) + hh / 2); if (top && f.contains(top)) out.push(`右上角按鈕蓋住結算層：${t.textContent.trim().slice(0, 16)}`); }
+    }
+  }
   for (const v of document.querySelectorAll('.sa-view:not(.sa-x)')) if (v.scrollWidth > v.clientWidth + 2 && v.getBoundingClientRect().width) out.push(`捲動區內容橫向溢出：${(v.parentElement && v.parentElement.className) || ''} ${v.scrollWidth}>${v.clientWidth}`);
   for (const el of document.querySelectorAll('*')) {
     const cs = getComputedStyle(el);
@@ -58,6 +66,7 @@ function auditPage() {
     await p.evaluate(() => window.__app.go('setup', { mode: 'vs' })); await check('對電腦設定');
     await p.evaluate(() => window.__app.go('tutorial')); await check('教學');
     await p.evaluate(() => window.__app.go('lobby')); await p.waitForTimeout(700); await check('大廳');
+    await p.click('.lobby-actions .btn:not(.autofocus)'); await p.waitForSelector('.modal', { timeout: 4000 }).catch(() => {}); await check('建立房間彈窗'); await p.keyboard.press('Escape'); await p.waitForTimeout(300);
     await p.click('.lobby-actions .autofocus'); await p.waitForSelector('.room-page', { timeout: 8000 }).catch(() => {}); await p.waitForTimeout(600); await check('房間'); // 快速加入 → 房間頁
     await p.evaluate(() => window.__app.go('home')); await p.waitForTimeout(500);
     await p.evaluate(() => window.__app.go('game', { kind: 'local', mode: 'versus', diff: 'normal', players: [{ id: 'me', name: 'Eric', kind: 'human' }, { id: 'ai1', name: '電腦1', kind: 'ai', ai: 'hard' }], lives: 2, setupMode: 'vs' }));
