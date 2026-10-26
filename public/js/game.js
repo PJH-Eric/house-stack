@@ -113,6 +113,7 @@ export function GameScreen(cfg) {
   const infoBtn = Btn({ ico: 'info', label: '資訊', size: 'sm', onClick: () => togglePanel(), badge: null, cls: 'info-btn' });
   infoBtn.append(unreadBadge);
   const menuBtn = IconBtn({ ico: 'home', label: online ? '離開房間' : '暫停選單', onClick: () => openMenu(), size: 20, cls: 'menu-btn' });
+  menuBtn.dataset.back = '1';
   const heightChip = h('div', { class: 'hud-chip', role: 'img', 'aria-label': '目前樓層' }, h('b', null, '1'));
   const towerIco = h('span', { class: 'hud-tower', 'aria-hidden': 'true' });
   towerIco.innerHTML = '<svg viewBox="0 0 24 56" width="30" height="70"><path fill="#f2b632" stroke="#a8741a" stroke-width="1.2" d="M12 1l1.2 8h-2.4L12 1Zm-3.5 9h7l-.8 8h2.3l-.5 6h-3l.6 5h2l1.4 18h-12l1.4-18h2l.6-5h-3l-.5-6h2.3l-.8-8Z"/><rect x="9" y="33" width="6" height="6" rx="3" fill="#fff6c9"/></svg>';

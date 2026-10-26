@@ -29,12 +29,22 @@ function go(name, params = {}) {
   if (name !== 'game') A.setAltitude(0);
   const f = cur.el.querySelector('[data-autofocus]');
   f && f.focus({ preventScroll: true });
+  if (name !== 'home' && !(history.state && history.state.app)) { try { history.pushState({ app: true }, ''); } catch (e) { /* ignore */ } } // 讓手機的「返回」鍵先退回上一層，而不是直接離開網站
 }
 app.go = go;
+window.addEventListener('popstate', () => {
+  if (!cur || cur.name === 'home') return;
+  const modal = document.querySelector('.modal');
+  if (modal) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  else { const b = cur.el.querySelector('[data-back]'); b ? b.click() : go('home'); }
+  if (cur && cur.name !== 'home') { try { history.pushState({ app: true }, ''); } catch (e) { /* ignore */ } }
+});
 
 /* ---------------- 共用：頁面外框 ---------------- */
 function Page({ title, back, children, narrow, cls }) {
-  const head = h('header', { class: 'page-head' }, back ? Btn({ ico: 'chevL', label: back.label || '返回', size: 'sm', onClick: back.fn }) : h('span'), h('h1', null, title), h('span', { class: 'page-head-gap' }));
+  const backBtn = back ? Btn({ ico: 'chevL', label: back.label || '返回', size: 'sm', onClick: back.fn }) : null;
+  if (backBtn) backBtn.dataset.back = '1';
+  const head = h('header', { class: 'page-head' }, backBtn || h('span'), h('h1', null, title), h('span', { class: 'page-head-gap' }));
   const sa = ScrollArea(h('div', { class: 'page-inner' + (narrow ? ' narrow' : '') }, children), { cls: 'page-scroll' });
   return h('div', { class: 'page' + (cls ? ' ' + cls : '') }, head, sa);
 }
