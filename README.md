@@ -70,7 +70,7 @@ npm start            # http://localhost:3090（或 Windows 雙擊「啟動遊戲
 ## 測試與檢查
 
 ```bash
-npm run verify       # 規則／AI／房間單元測試（17 項）+ 真實伺服器的線上整合檢查
+npm run verify       # 規則／AI／房間單元測試（25 項）+ 真實伺服器的線上整合檢查（20 項，含亂填資料防護）
 npm run audit        # 版面巡檢（Playwright）：5 種尺寸方向 × 所有畫面（BASE=http://localhost:3090/）
 npm run screenshots  # 擷取實際遊戲畫面到 screenshots/（可用 ONLY=… 分批）
 node scripts/online-ui.js   # 3 個瀏覽器（房主／玩家／觀戰）的線上畫面端對端
@@ -118,5 +118,5 @@ Settings → Secrets and variables → Actions → **Variables** 新增一個變
 - 對戰為共用同一棟樓；不含「各蓋各的比高度」模式。預設沒有樓層上限（規則層保留 `maxFloors` 選項，達到即登頂結束）。
 - 邀請連結不設時限，與房間同生命週期，房主可「撤銷並重發」；玩家席滿或對局進行中，玩家邀請會轉成觀戰並明確提示。
 - 邀請連結不會自動進房：先停在大廳顯示房間與可編輯暱稱，確認後才加入；伺服器消毒暱稱，角色由 token 決定。
-- 風沒有設定開關（規則層有 `wind`、`irregular` 選項）；尚未實作隕石與「慣性釋放」等其他無重力玩法。
+- 風沒有設定開關（規則層有 `wind` 選項）；尚未實作隕石與「慣性釋放」等其他無重力玩法。
 - 需要支援 WebGL 的瀏覽器；不支援時顯示說明頁。純文字教學；繁體中文介面。

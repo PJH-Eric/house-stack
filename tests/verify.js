@@ -218,6 +218,19 @@ async function test(name, fn) {
     const re = rm.join({ sid: 's3', name: 'Late', roomId: room.id, token: 'p_old', role: 'player' });
     assert.strictEqual(re.ok, false);
   });
+  await test('房間：樓層形狀設定可建立／修改（亂填會被擋）並帶進對局；非房主不能改', () => {
+    const rm = new RoomManager({ onEvent() {} });
+    const { room, member } = rm.createRoom({ sid: 'h', name: 'Host', shapes: 'fixed' });
+    assert.strictEqual(room.settings.shapes, 'fixed');
+    assert.strictEqual(rm.createRoom({ sid: 'x', name: 'X', shapes: '<b>' }).room.settings.shapes, 'off');
+    assert.ok(rm.setSettings(room, member.id, { shapes: 'every' })); assert.strictEqual(room.settings.shapes, 'every');
+    rm.setSettings(room, member.id, { shapes: 'zzz' }); assert.strictEqual(room.settings.shapes, 'every', '非法值忽略');
+    const j = rm.join({ sid: 'g', name: 'G', roomId: room.id, token: room.tokens.player, role: 'player' });
+    assert.strictEqual(rm.setSettings(room, j.member.id, { shapes: 'off' }), false, '非房主不能改'); assert.strictEqual(room.settings.shapes, 'every');
+    rm.setReady(room, j.member.id, true);
+    const st = rm.start(room, member.id); assert.ok(st.ok, JSON.stringify(st));
+    assert.strictEqual(room.game.publicState().shapes, 'every');
+  });
   await test('邀請：token 決定角色；玩家席滿 → 轉觀戰；撤銷後無效', () => {
     const rm = new RoomManager({ onEvent() {} });
     const { room } = rm.createRoom({ sid: 'h', name: 'Host', maxPlayers: 2 });

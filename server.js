@@ -27,7 +27,10 @@ const originCheck = (origin, cb) => {
 };
 const io = new Server(server, { cors: { origin: originCheck, methods: ['GET', 'POST'] }, pingInterval: 10000, pingTimeout: 12000 });
 
+app.disable('x-powered-by');
 app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
   const o = req.headers.origin;
   if (o && (allowed.includes(o) || (!isProd && !allowed.length))) {
     res.setHeader('Access-Control-Allow-Origin', o);
@@ -126,8 +129,24 @@ function afterRemoved(room, out) {
 // ---------------- Socket 事件 ----------------
 const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
 
+process.on('uncaughtException', (e) => console.error('[未預期的例外]', e && e.stack || e)); // 單一房間的計時器／AI 出錯不應讓整個服務停掉
+process.on('unhandledRejection', (e) => console.error('[未處理的拒絕]', e && e.stack || e));
+
 io.on('connection', (socket) => {
   const sid = socket.id;
+  // 統一輸入防護：事件資料不是一般物件（null、字串、陣列…）就當成空物件；沒帶回呼就補空函式；處理中的例外只回報失敗，不讓整個伺服器掛掉
+  const rawOn = socket.on.bind(socket);
+  socket.on = (ev, fn) => (ev === 'disconnect' ? rawOn(ev, fn) : rawOn(ev, (...args) => {
+    const cb = [...args].reverse().find((x) => typeof x === 'function');
+    try {
+      let d = args[0];
+      if (typeof d !== 'function' && (d === null || typeof d !== 'object' || Array.isArray(d))) d = {};
+      fn(d, cb || (() => {}), ...args.slice(2));
+    } catch (e) {
+      console.error('[socket] ' + ev + ' 處理失敗：' + (e && e.message));
+      if (cb) { try { cb({ ok: false, code: 'server_error', msg: '伺服器處理失敗，請稍後再試' }); } catch (e2) { /* ignore */ } }
+    }
+  }));
   let chatBucket = { n: 0, t: Date.now() };
   const ok = (cb, data) => typeof cb === 'function' && cb({ ok: true, ...data });
   const fail = (cb, code, msg) => typeof cb === 'function' && cb({ ok: false, code, msg });

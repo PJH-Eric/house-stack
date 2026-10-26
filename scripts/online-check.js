@@ -34,6 +34,16 @@ const until = async (fn, ms = 20000, label = '') => {
     for (let i = 0; i < 50; i++) { try { health = await (await fetch(URL + '/health')).json(); break; } catch { await wait(100); } }
     assert.ok(health && health.ok); step('/health 可用');
 
+    { // 惡意／錯誤的事件資料不能讓伺服器掛掉，也都要有回應
+      const f = await client();
+      const bads = [undefined, null, 5, 'x', [], {}, { name: {} }, { maxPlayers: 'NaN', difficulty: {}, lives: Infinity, shapes: [] }, { roomId: {}, token: [] }];
+      for (const ev of ['room:create', 'room:join', 'room:quick', 'room:resume', 'invite:info', 'room:settings', 'room:ai:add', 'room:ready', 'room:kick', 'room:start', 'game:drop', 'chat:send', 'room:seat', 'room:watch', 'room:revoke', 'room:leave']) {
+        for (const d of bads) { const r = await Promise.race([emit(f, ev, d), wait(1500).then(() => 'timeout')]); assert.notStrictEqual(r, 'timeout', ev + ' 沒有回應'); }
+      }
+      const h2 = await (await fetch(URL + '/health')).json(); assert.ok(h2.ok); f.close();
+      step('亂填的事件資料不會讓伺服器當掉（皆有回應）');
+    }
+
     const host = await client(), p2 = await client(), watcher = await client(), late = await client();
     const lw = await emit(late, 'lobby:watch', undefined);
     assert.ok(lw.ok && Array.isArray(lw.rooms)); step('大廳訂閱可取得房間列表');
