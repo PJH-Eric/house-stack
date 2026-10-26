@@ -424,3 +424,13 @@ html[lang="en"] .logo-blk { width: auto; min-width: 40px; height: 46px; padding:
 
 /* 窄版資訊欄展開時蓋在右上角的語言／設定鈕之上，避免攔截欄內的收合鍵 */
 @media (max-width: 900px) { body:has(.panel-open) .gear-wrap { z-index: 20; } }
+
+/* 320px 級窄螢幕：返回鈕與右上角兩顆按鈕已佔滿一列，標題獨立換到下一列；首頁大廳連結縮小避開語言鈕 */
+@media (max-width: 360px) {
+  .page-head { flex-wrap: wrap; row-gap: 2px; }
+  .page-head h1 { order: 3; flex: 1 0 100%; margin-top: 16px; }
+  .page-head-gap, .has-latency .page-head-gap { display: none; }
+  .lobby-link { font-size: 13px; padding: 0 10px 0 6px; max-width: calc(100% - 140px); line-height: 1.1; }
+}
+.lang-pop { display: flex; flex-direction: column; }
+.lang-pop .lang-opt { width: 100%; text-align: left; display: block; }

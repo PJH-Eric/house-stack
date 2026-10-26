@@ -178,6 +178,7 @@ export function GameScreen(cfg) {
     const tag = (e.target && e.target.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     if (hasModal()) return;
+    if (e.target && e.target.closest && e.target.closest('.gear-wrap, .lang-pop')) { if (e.key === 'Escape' && !document.querySelector('.lang-pop')) { /* 設定／語言鈕上按 Esc 仍開暫停選單 */ } else return; } // 右上角按鈕與語言選單自己處理 Enter／空白／方向鍵
     if (e.key === 'Escape' && !S.over && !S.resultShown) { e.preventDefault(); openMenu(); return; }
     if (!S.canAct || S.over) return;
     if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); if (document.activeElement && document.activeElement.blur && (e.key === ' ' || e.key === 'Enter')) document.activeElement.blur(); drop(); }

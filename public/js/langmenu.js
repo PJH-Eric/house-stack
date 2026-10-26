@@ -11,21 +11,22 @@ export function LangButton() {
   btn.setAttribute('aria-haspopup', 'menu'); btn.setAttribute('aria-expanded', 'false');
   const badge = h('span', { class: 'lang-badge', 'aria-hidden': 'true' }, BADGE[getLang()]);
   btn.append(badge);
-  onLangChange(() => { badge.textContent = BADGE[getLang()]; });
+  onLangChange(() => { badge.textContent = BADGE[getLang()]; btn.setAttribute('aria-label', t('語言')); btn.title = t('語言'); });
 
   function onDoc(e) { if (pop && !pop.contains(e.target) && !btn.contains(e.target)) close(); }
   function close(focus) {
     if (!pop) return;
     pop.remove(); pop = null; btn.setAttribute('aria-expanded', 'false');
-    document.removeEventListener('pointerdown', onDoc, true); window.removeEventListener('resize', close);
+    document.removeEventListener('pointerdown', onDoc, true); window.removeEventListener('resize', close); window.removeEventListener('popstate', close);
     if (focus) btn.focus();
   }
   function open() {
     pop = h('div', { class: 'sel-pop lang-pop', role: 'menu', 'aria-label': t('語言') });
     for (const code of SUPPORTED) {
       const it = h('button', { type: 'button', role: 'menuitemradio', lang: code, class: 'sel-opt lang-opt' + (code === getLang() ? ' cur' : ''), 'aria-checked': String(code === getLang()) }, LANG_NAMES[code]);
-      it.addEventListener('click', () => { close(true); setLang(code); });
+      it.addEventListener('click', () => { close(); setLang(code); });
       it.addEventListener('keydown', (e) => {
+        e.stopPropagation(); // 對局中 ↓／空白／Enter 是「放下」，選單操作不可外溢
         if (e.key === 'ArrowDown') { e.preventDefault(); (it.nextElementSibling || pop.firstElementChild).focus(); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); (it.previousElementSibling || pop.lastElementChild).focus(); }
         else if (e.key === 'Escape') { e.stopPropagation(); close(true); }
@@ -38,7 +39,7 @@ export function LangButton() {
     pop.style.left = Math.max(8, Math.min(r.right - 168, window.innerWidth - 176)) + 'px';
     document.body.append(pop);
     btn.setAttribute('aria-expanded', 'true');
-    document.addEventListener('pointerdown', onDoc, true); window.addEventListener('resize', close);
+    document.addEventListener('pointerdown', onDoc, true); window.addEventListener('resize', close); window.addEventListener('popstate', close); // 瀏覽器返回鍵時一併收起
     (pop.querySelector('.cur') || pop.firstElementChild).focus();
   }
   return btn;
