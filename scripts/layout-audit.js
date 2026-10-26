@@ -8,7 +8,7 @@
 'use strict';
 const { launch } = require('./browser.js');
 const BASE = process.env.BASE || 'http://localhost:3090/';
-const SIZES = { 'phone-p': [390, 844], 'phone-l': [844, 390], 'tablet-p': [820, 1180], 'tablet-l': [1180, 820], desktop: [1440, 900] };
+const SIZES = { 'phone-xs': [320, 640], 'phone-p': [390, 844], 'phone-l': [844, 390], 'tablet-p': [820, 1180], 'tablet-l': [1180, 820], desktop: [1440, 900] };
 
 function auditPage() {
   const out = [];
