@@ -46,7 +46,8 @@ function home() {
   const gm = R.createGame({ seed: 4, difficulty: 'easy', mode: 'solo' });
   for (const d of [0, 0.3, -0.5, 0.2, 0, 0.6, -0.3, 0.1, 0, -0.4]) gm.drop({ d });
   let board, raf = 0, last = performance.now(), dead = false;
-  const bests = Object.keys(R.DIFFICULTIES).filter((k) => store.best(k)).map((k) => `${diffLabel(k)} ${store.best(k)} 層`);
+  const SHAPE_TAG = { off: '', fixed: '・固定形狀', every: '・每層不同' };
+  const bests = Object.keys(R.DIFFICULTIES).flatMap((k) => ['off', 'fixed', 'every'].filter((sh) => store.best(k, sh)).map((sh) => `${diffLabel(k)}${SHAPE_TAG[sh]} ${store.best(k, sh)} 層`));
   const online = CONFIG.onlineAvailable;
   const card = h('div', { class: 'home-card' },
       h('div', { class: 'logo' }, h('span', { class: 'logo-blk b1' }, '疊'), h('span', { class: 'logo-blk b2' }, '疊'), h('span', { class: 'logo-blk b3' }, '高'), h('span', { class: 'logo-blk b4' }, '樓')),
@@ -84,13 +85,13 @@ const setupMem = { diff: 'normal', ais: ['normal'], lives: 0, shapes: 'off' };
 function setup({ mode }) {
   const solo = mode === 'solo';
   const nameTf = TextField({ value: ensureNick(), maxLength: 12, label: '暱稱', onInput: (v) => store.set({ nick: v.slice(0, 12) }) });
-  const dSel = Select({ label: '難度', value: setupMem.diff, options: DIFF_OPTS, onChange: (v) => { setupMem.diff = v; desc.textContent = DIFF_DESC[v]; refreshLives(); } });
+  const dSel = Select({ label: '難度', value: setupMem.diff, options: DIFF_OPTS, onChange: (v) => { setupMem.diff = v; desc.textContent = DIFF_DESC[v]; refreshLives(); showRec(); } });
   const desc = h('p', { class: 'field-desc' }, DIFF_DESC[setupMem.diff]);
   const livesLabel = (v) => (v === 0 ? '預設' : `${v} 顆`);
   const lives = Stepper({ label: solo ? '生命（愛心）' : '每人生命', value: setupMem.lives, min: 0, max: 5, format: livesLabel, onChange: (v) => { setupMem.lives = v; refreshLives(); } });
   const livesHint = h('p', { class: 'field-desc' });
   const shDesc = h('p', { class: 'field-desc' }, SHAPE_DESC[setupMem.shapes]);
-  const shSel = Select({ label: '樓層形狀', value: setupMem.shapes, options: SHAPE_OPTS, onChange: (v) => { setupMem.shapes = v; shDesc.textContent = SHAPE_DESC[v]; } });
+  const shSel = Select({ label: '樓層形狀', value: setupMem.shapes, options: SHAPE_OPTS, onChange: (v) => { setupMem.shapes = v; shDesc.textContent = SHAPE_DESC[v]; showRec(); } });
   function refreshLives() {
     const d = R.DIFFICULTIES[setupMem.diff];
     const def = solo ? d.lives : d.versusLives;
@@ -103,7 +104,7 @@ function setup({ mode }) {
     setupMem.ais.forEach((lv, i) => aiBox.append(Select({ label: `電腦 ${i + 1}`, value: lv, options: AI_OPTS, onChange: (v) => { setupMem.ais[i] = v; } })));
   }
   const rec = h('p', { class: 'field-desc' }, '');
-  function showRec() { const b = store.best(setupMem.diff); rec.textContent = b ? `這個難度的最高紀錄：${b} 層` : ''; }
+  function showRec() { const b = store.best(setupMem.diff, setupMem.shapes); rec.textContent = b ? `這個難度與形狀的最高紀錄：${b} 層` : ''; }
   dSel.addEventListener('click', () => {});
   const start = Btn({ label: '開始', kind: 'primary', size: 'lg', block: true, onClick: () => startLocal(), cls: 'autofocus' });
   function startLocal() {

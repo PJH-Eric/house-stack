@@ -39,7 +39,7 @@ export function GameScreen(cfg) {
   const popLayer = h('div', { class: 'pop-layer', 'aria-hidden': 'true' });
 
   function initFromState(gs) {
-    S.mode = gs.mode; S.diff = gs.difficulty;
+    S.mode = gs.mode; S.diff = gs.difficulty; S.shapes = gs.shapes || 'off';
     board.setConfig(gs);
     S.players = gs.players.map((p) => ({ ...p }));
     S.maxLives = Math.max(S.maxLives, ...S.players.map((p) => p.lives));
@@ -89,7 +89,7 @@ export function GameScreen(cfg) {
       h('div', { class: 'stat' }, h('small', null, solo ? '本局最高' : '回合'), h('b', null, solo ? S.peak : S.turnNo, h('em', null, solo ? ' 層' : ' 次')))));
     if (solo) summaryBox.append(h('div', { class: 'stat wide' }, h('small', null, '得分'), h('b', null, me ? me.score : 0), S.combo > 1 ? h('em', { class: 'combo' }, ` 完美連擊 ×${S.combo}`) : null));
     summaryBox.append(h('div', { class: 'stab-box' }, h('small', null, '穩定度（太低樓會倒）'), h('div', { class: 'stab ' + stabClass(S.stability), role: 'meter', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(S.stability * 100) }, h('i', { style: { width: Math.round(S.stability * 100) + '%' } }))));
-    if (solo) summaryBox.append(h('div', { class: 'sum-note' }, `歷史最高 ${Math.max(store.best(S.diff), S.peak)} 層`));
+    if (solo) summaryBox.append(h('div', { class: 'sum-note' }, `歷史最高 ${Math.max(store.best(S.diff, S.shapes), S.peak)} 層`));
     const ul = h('ul', { class: 'plist' });
     for (const p of S.players) {
       const mine = p.id === S.myId, turn = p.id === S.turnId && !S.over;
@@ -270,7 +270,7 @@ export function GameScreen(cfg) {
     let title, sub, tone = 'lose';
     if (solo) {
       store.set({ played: store.get().played + 1 });
-      S.newBest = store.setBest(S.diff, S.peak);
+      S.newBest = store.setBest(S.diff, S.peak, S.shapes);
       title = S.summit ? '登上天際！' : '挑戰結束'; sub = `最高蓋到 ${S.peak} 層`; tone = S.summit || S.newBest ? 'win' : 'plain';
     } else if (S.winnerId) {
       const win = S.winnerId === S.myId;

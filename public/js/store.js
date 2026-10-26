@@ -9,7 +9,9 @@ export const store = {
   get: () => data,
   set(patch) { data = { ...data, ...patch }; save(); subs.forEach((f) => f(data)); },
   reset() { const keep = { best: data.best, played: data.played, nick: data.nick }; data = { ...DEFAULTS, ...keep }; save(); subs.forEach((f) => f(data)); },
-  best(diff) { return data.best[diff] || 0; },
-  setBest(diff, v) { if (v > (data.best[diff] || 0)) { this.set({ best: { ...data.best, [diff]: v } }); return true; } return false; },
+  /** 最高紀錄：一般形狀沿用舊的難度鍵，其他形狀模式各自獨立（形狀不同，層數不能直接比） */
+  key(diff, shapes) { return shapes === 'fixed' || shapes === 'every' ? `${diff}:${shapes}` : diff; },
+  best(diff, shapes) { return data.best[this.key(diff, shapes)] || 0; },
+  setBest(diff, v, shapes) { const k = this.key(diff, shapes); if (v > (data.best[k] || 0)) { this.set({ best: { ...data.best, [k]: v } }); return true; } return false; },
   subscribe(f) { subs.add(f); return () => subs.delete(f); },
 };
