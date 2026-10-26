@@ -56,7 +56,7 @@ export function GameScreen(cfg) {
     initFromState(v.game);
   } else {
     S.myId = 'me';
-    g = R.createGame({ seed: (Math.random() * 2 ** 31) >>> 0, difficulty: S.diff, mode: S.mode, lives: cfg.lives || undefined, players: cfg.players });
+    g = R.createGame({ seed: (Math.random() * 2 ** 31) >>> 0, difficulty: S.diff, mode: S.mode, lives: cfg.lives || undefined, shapes: cfg.shapes || 'off', players: cfg.players });
     initFromState(g.publicState());
   }
 

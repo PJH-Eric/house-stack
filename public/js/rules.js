@@ -51,9 +51,18 @@
   }
 
   /** 第 n 層（0 起算）的外形倍率 {w,h}：只由種子、難度、層數決定，各端點一致。 */
-  function shapeFor(seed, diffKey, n) {
-    if (n < 5) return { w: 1, h: 1 };
-    const S = IRR[diffKey] || IRR.normal, ramp = Math.min(1, (n - 4) / 26);
+  function shapeFor(seed, diffKey, n, mode) {
+    mode = mode || 'every';
+    if (mode === 'off' || n < 1) return { w: 1, h: 1 };
+    const S = IRR[diffKey] || IRR.normal;
+    if (mode === 'fixed') { // 開局隨機一種形狀，整場都是它（幅度取該難度最大值的 55%~100%，並避開接近標準的外形）
+      const r = mulberry32((seed ^ 0x5bd1e995) >>> 0);
+      const u = r(), v = r(), k = 0.55 + 0.45 * r();
+      let w = 1 + (u * 2 - 1) * S.w * k, hh = 1 + (v * 2 - 1) * S.h * k;
+      if (Math.abs(w - 1) < 0.12 && Math.abs(hh - 1) < 0.1) w += u < 0.5 ? -0.25 : 0.25;
+      return { w: r3(clamp(w, 0.55, 1.5)), h: r3(clamp(hh, 0.7, 1.4)) };
+    }
+    const ramp = Math.min(1, n / 10); // 每層都不同：從第 1 層起，10 層內逐漸增加到最大幅度
     const r = mulberry32((seed ^ Math.imul(n + 5, 2654435769)) >>> 0);
     const u = r(), v = r();
     return { w: r3(clamp(1 + (u * 2 - 1) * S.w * ramp, 0.55, 1.5)), h: r3(clamp(1 + (v * 2 - 1) * S.h * ramp, 0.7, 1.4)) };
@@ -140,7 +149,7 @@
     const rng = mulberry32(seed);
     const maxFloors = opts.maxFloors > 0 ? opts.maxFloors : SKY_FLOORS;
     const windOn = opts.wind !== false;
-    const irregular = opts.irregular === true; // 不規則樓層預設關閉（使用者不需要），保留為可選規則
+    const shapes = opts.shapes === 'fixed' || opts.shapes === 'every' ? opts.shapes : opts.irregular === true ? 'every' : 'off'; // 樓層形狀：off 一般｜fixed 開局隨機一種、整場相同｜every 每層都不同
     const spaceAt = opts.spaceFloors > 0 ? opts.spaceFloors : SPACE_FLOORS;
 
     const g = {
@@ -156,7 +165,7 @@
       const r = mulberry32((seed ^ Math.imul(n + 1, 2654435761)) >>> 0);
       return { color: Math.floor(r() * PALETTE_COUNT), variant: Math.floor(r() * VARIANT_COUNT) };
     };
-    const shape = (n) => (irregular ? shapeFor(seed, diffKey, n) : { w: 1, h: 1 });
+    const shape = (n) => shapeFor(seed, diffKey, n, shapes);
 
     g.players = (opts.players && opts.players.length ? opts.players : [{ id: 'p1', name: '玩家' }]).map((p, i) => ({
       id: p.id, name: p.name, kind: p.kind || 'human', ai: p.ai, seat: p.seat != null ? p.seat : i,
@@ -178,8 +187,8 @@
       const n = g.floors.length;
       let wind = 0;
       if (windOn && n < spaceAt) {
-        const dir = mulberry32((seed ^ Math.imul(Math.floor(n / 7) + 3, 2246822519)) >>> 0)() < 0.5 ? -1 : 1; // 每 7 層左右換一次風向
-        const gust = 0.35 + 0.65 * mulberry32((seed ^ Math.imul(g.turnNo + 11, 3266489917) ^ Math.imul(n, 101)) >>> 0)(); // 每回合陣風強弱不同
+        const dir = mulberry32((seed ^ Math.imul(g.turnNo + 3, 2246822519) ^ Math.imul(n, 7919)) >>> 0)() < 0.5 ? -1 : 1; // 每回合風向都可能不同
+        const gust = 0.2 + 0.8 * mulberry32((seed ^ Math.imul(g.turnNo + 11, 3266489917) ^ Math.imul(n, 101)) >>> 0)(); // 每回合風速也不同
         wind = r3(dir * windBase(n) * gust);
       }
       const W = WIND[diffKey];
@@ -318,7 +327,7 @@
     }));
 
     g.publicState = () => ({
-      seed, difficulty: diffKey, mode, size: D.size, ground: D.ground, amp: D.amp, tol: D.tol,
+      seed, difficulty: diffKey, mode, shapes, size: D.size, ground: D.ground, amp: D.amp, tol: D.tol,
       floors: g.floors.map(arr8),
       players: g.publicPlayers(), current: g.current, currentId: g.over ? null : g.currentPlayer().id,
       turnNo: g.turnNo, over: g.over, winnerId: g.winnerId, summit: g.summit,

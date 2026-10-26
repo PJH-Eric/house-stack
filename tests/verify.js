@@ -118,18 +118,33 @@ async function test(name, fn) {
     assert.strictEqual(ev.fallFrom, -1);
   });
 
-  await test('不規則樓層：第 5 層前標準尺寸；之後寬高有變化、範圍受限、決定性；可關閉', () => {
-    for (let n = 0; n < 5; n++) assert.deepStrictEqual(T.shapeFor(9, 'normal', n), { w: 1, h: 1 });
-    let varied = 0;
-    for (let n = 5; n < 120; n++) { const a = T.shapeFor(9, 'hard', n), b = T.shapeFor(9, 'hard', n); assert.deepStrictEqual(a, b); assert.ok(a.w >= 0.55 && a.w <= 1.5 && a.h >= 0.7 && a.h <= 1.4); if (a.w !== 1 || a.h !== 1) varied++; }
-    assert.ok(varied > 100, '大多數樓層外形不同');
-    const g = T.createGame({ seed: 3, difficulty: 'normal', irregular: true });
-    for (let i = 0; i < 40; i++) g.drop({ d: -g.swingSpec.drift });
-    assert.ok(g.floors.some((f) => f.w !== 1) && g.floors.some((f) => f.h !== 1), '外形進入資料');
-    const st = g.publicState(); assert.strictEqual(st.floors[st.floors.length - 1].length, 8);
-    const off = T.createGame({ seed: 3, difficulty: 'normal' }); // 預設關閉
-    for (let i = 0; i < 40; i++) off.drop({ d: 0 });
-    assert.ok(off.floors.every((f) => f.w === 1 && f.h === 1));
+  await test('樓層形狀：off 全標準；fixed 開局隨機一種、整場相同；every 每層不同；決定性', () => {
+    for (let n = 0; n < 30; n++) assert.deepStrictEqual(T.shapeFor(9, 'normal', n, 'off'), { w: 1, h: 1 });
+    const f = T.shapeFor(9, 'normal', 1, 'fixed'); assert.ok(f.w !== 1 || f.h !== 1);
+    for (let n = 2; n < 100; n++) assert.deepStrictEqual(T.shapeFor(9, 'normal', n, 'fixed'), f);
+    assert.notDeepStrictEqual(T.shapeFor(10, 'normal', 1, 'fixed'), f, '不同種子形狀不同');
+    assert.deepStrictEqual(T.shapeFor(9, 'normal', 0, 'every'), { w: 1, h: 1 });
+    const set = new Set(); for (let n = 1; n < 100; n++) { const a = T.shapeFor(9, 'hard', n, 'every'); assert.deepStrictEqual(a, T.shapeFor(9, 'hard', n, 'every')); assert.ok(a.w >= 0.55 && a.w <= 1.5 && a.h >= 0.7 && a.h <= 1.4); set.add(a.w + ',' + a.h); }
+    assert.ok(set.size > 90, '每層外形都不同');
+    const gf = T.createGame({ seed: 3, difficulty: 'normal', shapes: 'fixed' });
+    for (let i = 0; i < 20; i++) gf.drop({ d: 0 });
+    const ws = new Set(gf.floors.slice(1).map((x) => x.w + ',' + x.h)); assert.strictEqual(ws.size, 1);
+    const ge = T.createGame({ seed: 3, difficulty: 'normal', shapes: 'every' });
+    for (let i = 0; i < 20; i++) ge.drop({ d: 0 });
+    assert.ok(new Set(ge.floors.slice(1).map((x) => x.w + ',' + x.h)).size > 10);
+    assert.strictEqual(ge.publicState().floors[5].length, 8); assert.strictEqual(ge.publicState().shapes, 'every');
+    const off = T.createGame({ seed: 3, difficulty: 'normal' });
+    for (let i = 0; i < 20; i++) off.drop({ d: 0 });
+    assert.ok(off.floors.every((x) => x.w === 1 && x.h === 1));
+  });
+  await test('風：方向與風速每回合都不固定（有左有右、強弱不一）', () => {
+    const g = T.createGame({ seed: 12, difficulty: 'normal', wind: true });
+    const ws = [];
+    for (let i = 0; i < 60; i++) { g.drop({ d: -g.swingSpec.drift }); if (i > 25) ws.push(g.swingSpec.wind); }
+    assert.ok(ws.some((w) => w > 0) && ws.some((w) => w < 0), '左右都有');
+    assert.ok(new Set(ws.map((w) => Math.abs(w))).size > 20, '風速各不同');
+    let flips = 0; for (let i = 1; i < ws.length; i++) if (Math.sign(ws[i]) !== Math.sign(ws[i - 1])) flips++;
+    assert.ok(flips >= 5, '方向常變');
   });
   await test('重心判定（不規則）：窄樓層接合面較小，較寬的頂層較容易站穩；沒重疊就沒接到', () => {
     const E = (arr) => T.evaluate(arr, 4, 7);
@@ -157,7 +172,7 @@ async function test(name, fn) {
     assert.strictEqual(T.SPACE_FLOORS, 140);
   });
   await test('電腦在太空與不規則樓層下仍能正常蓋樓（困難：50 層內不會全倒）', () => {
-    const g = T.createGame({ seed: 8, difficulty: 'normal', lives: 9, irregular: true, spaceFloors: 30 });
+    const g = T.createGame({ seed: 8, difficulty: 'normal', lives: 9, shapes: 'every', spaceFloors: 30 });
     const rng = T.mulberry32(5); let n = 0;
     while (!g.over && n < 60) { const m = AI.chooseMove(g, 'hard', rng, { tNow: 0 }); g.drop({ d: m.d }); n++; }
     assert.ok(g.peak >= 25, '最高 ' + g.peak);

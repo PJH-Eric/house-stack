@@ -78,7 +78,9 @@ function home() {
 }
 
 /* ---------------- 開局設定（單人／對電腦） ---------------- */
-const setupMem = { diff: 'normal', ais: ['normal'], lives: 0 };
+const SHAPE_OPTS = [{ value: 'off', label: '一般（方正樓層）' }, { value: 'fixed', label: '隨機一種形狀（整場相同）' }, { value: 'every', label: '整場都不規則（每層不同）' }];
+const SHAPE_DESC = { off: '每層都是標準大小。', fixed: '開局隨機決定一種寬窄高矮，整場每層都長這樣。', every: '每一層的寬窄高矮都不一樣，越高變化越大。' };
+const setupMem = { diff: 'normal', ais: ['normal'], lives: 0, shapes: 'off' };
 function setup({ mode }) {
   const solo = mode === 'solo';
   const nameTf = TextField({ value: ensureNick(), maxLength: 12, label: '暱稱', onInput: (v) => store.set({ nick: v.slice(0, 12) }) });
@@ -87,6 +89,8 @@ function setup({ mode }) {
   const livesLabel = (v) => (v === 0 ? '預設' : `${v} 顆`);
   const lives = Stepper({ label: solo ? '生命（愛心）' : '每人生命', value: setupMem.lives, min: 0, max: 5, format: livesLabel, onChange: (v) => { setupMem.lives = v; refreshLives(); } });
   const livesHint = h('p', { class: 'field-desc' });
+  const shDesc = h('p', { class: 'field-desc' }, SHAPE_DESC[setupMem.shapes]);
+  const shSel = Select({ label: '樓層形狀', value: setupMem.shapes, options: SHAPE_OPTS, onChange: (v) => { setupMem.shapes = v; shDesc.textContent = SHAPE_DESC[v]; } });
   function refreshLives() {
     const d = R.DIFFICULTIES[setupMem.diff];
     const def = solo ? d.lives : d.versusLives;
@@ -107,12 +111,12 @@ function setup({ mode }) {
     const players = [{ id: 'me', name: me, kind: 'human' }];
     if (!solo) setupMem.ais.forEach((lv, i) => players.push({ id: 'ai' + (i + 1), name: `電腦${i + 1}`, kind: 'ai', ai: lv }));
     A.unlock(); A.sfx.click();
-    go('game', { kind: 'local', mode: solo ? 'solo' : 'versus', diff: setupMem.diff, players, lives: setupMem.lives, setupMode: mode });
+    go('game', { kind: 'local', mode: solo ? 'solo' : 'versus', diff: setupMem.diff, players, lives: setupMem.lives, shapes: setupMem.shapes, setupMode: mode });
   }
   drawAis(); refreshLives(); showRec();
   const body = [
-    Field('暱稱', nameTf), dSel, desc, rec, lives, livesHint,
-    solo ? h('p', { class: 'rule-note' }, '單人規則：樓層重心不穩、整段倒塌（或完全沒接到）就失去一顆愛心，愛心用完結束，比誰蓋得高、得分高。連續完美對齊會有連擊加分。') : h('div', null, aiCount, aiBox, h('p', { class: 'rule-note' }, '輪流規則：大家輪流操作吊車，在同一棟樓上加蓋一層。讓樓倒塌的人失去一顆愛心，愛心用完就淘汰，最後留下的人獲勝。樓沒有上限，風越高越大。')),
+    Field('暱稱', nameTf), dSel, desc, rec, lives, livesHint, shSel, shDesc,
+    solo ? h('p', { class: 'rule-note' }, '單人規則：樓層重心不穩、整段倒塌（或完全沒接到）就失去一顆愛心，愛心用完結束，比誰蓋得高、得分高。連續完美對齊會有連擊加分。') : h('div', null, aiCount, aiBox, h('p', { class: 'rule-note' }, '輪流規則：大家輪流操作吊車，在同一棟樓上加蓋一層。讓樓倒塌的人失去一顆愛心，愛心用完就淘汰，最後留下的人獲勝。樓沒有上限，風越高越大。樓層形狀可在設定裡選。')),
     start,
   ];
   const page = Page({ title: solo ? '單人挑戰' : '對電腦輪流', back: { fn: () => go('home') }, children: body, narrow: true });
@@ -129,7 +133,7 @@ function tutorial() {
     ['單人挑戰', '樓倒了會失去一顆愛心，愛心用完就結束。連續完美對齊有連擊加分；樓層沒有上限，越蓋越高會經過鳥群、雲層、太空與行星。紀錄會存在這台裝置上。'],
     ['輪流對戰', '電腦或線上好友輪流在同一棟樓上加蓋。讓樓倒塌的人失去一顆愛心，沒有愛心就淘汰，最後留下的人獲勝。每個人蓋的樓層頂板下有各自的顏色細帶，方便看出誰蓋的。'],
     ['小技巧', '先蓋穩再求快：每次都對得很準，重心就會一直在中間。如果樓已經歪向一邊，下一層故意往反方向偏一點，可以把重心拉回來。吊車擺到正中間的瞬間放下，最容易「完美」。'],
-    ['風', '樓蓋得越高風越大（約 50～90 層最強），而且有陣風：風會把吊車的擺盪中心吹偏，樓層放下後在空中還會被吹走一小段。看右下角的風向與風力，先預判再放，白色框框會顯示已經算入風的預測落點。到了太空（約 140 層）就沒有風了。電腦對手也會判斷風，只是難度越低誤差越大。'],
+    ['風', '樓蓋得越高風越大（約 50～90 層最強），而且有陣風：風會把吊車的擺盪中心吹偏，樓層放下後在空中還會被吹走一小段。看右下角的風向與風力，先預判再放，白色框框會顯示已經算入風的預測落點。風向與風速每一回合都不固定。到了太空（約 140 層）就沒有風了。電腦對手也會判斷風，只是難度越低誤差越大。'],
     ['太空無重力', '到了太空（約 140 層）沒有風，改成無重力：放下的樓層會被磁力吸向中心（偏移縮小），下落與搖晃都變慢、樓房會緩緩漂浮；倒塌時殘骸會慢慢飄散。白色框框會顯示磁吸之後的預測落點，右下角會顯示「無重力・磁吸」。'],
     ['線上房間', '建立房間後可以分享「玩家連結」邀請朋友加入，或分享「觀戰連結」讓人觀看；房間裡可以加入電腦。沒有真人玩家時房間會自動關閉。'],
   ];
@@ -267,15 +271,16 @@ function lobby() {
     enterRoom(res);
   }
   function createDialog() {
-    let diff = 'normal', maxP = 4, lives = 0;
+    let diff = 'normal', maxP = 4, lives = 0, shapes = 'off';
     const m = Modal({
       title: '建立房間',
       body: [Select({ label: '難度', value: diff, options: DIFF_OPTS, onChange: (v) => { diff = v; } }),
         Stepper({ label: '人數上限', value: maxP, min: 2, max: 4, onChange: (v) => { maxP = v; } }),
-        Stepper({ label: '每人生命', value: lives, min: 0, max: 5, format: (v) => (v === 0 ? '預設' : v + ' 顆'), onChange: (v) => { lives = v; } })],
+        Stepper({ label: '每人生命', value: lives, min: 0, max: 5, format: (v) => (v === 0 ? '預設' : v + ' 顆'), onChange: (v) => { lives = v; } }),
+        Select({ label: '樓層形狀', value: shapes, options: SHAPE_OPTS, onChange: (v) => { shapes = v; } })],
       actions: [Btn({ label: '取消', onClick: () => m.close() }), Btn({ label: '建立', kind: 'primary', onClick: async () => {
         m.close(true); setBusy(true, '建立房間中…');
-        const res = await net.emit('room:create', { name: nick() || ensureNick(), difficulty: diff, maxPlayers: maxP, lives });
+        const res = await net.emit('room:create', { name: nick() || ensureNick(), difficulty: diff, maxPlayers: maxP, lives, shapes });
         setBusy(false); if (!res.ok) return toast(res.msg || '建立失敗'); enterRoom(res);
       } })],
     });
@@ -372,8 +377,9 @@ function room() {
     sideBox.append(sec('房間設定',
       isHost ? [Select({ label: '難度', value: v.settings.difficulty, options: DIFF_OPTS, onChange: (d) => net.emit('room:settings', { difficulty: d }) }),
         Stepper({ label: '人數上限', value: v.settings.maxPlayers, min: Math.max(2, seated.length), max: 4, onChange: (n) => net.emit('room:settings', { maxPlayers: n }) }),
-        Stepper({ label: '每人生命', value: v.settings.lives, min: 0, max: 5, format: (x) => (x === 0 ? '預設' : x + ' 顆'), onChange: (n) => net.emit('room:settings', { lives: n }) })]
-        : h('p', { class: 'muted' }, `難度 ${diffLabel(v.settings.difficulty)}・每人生命 ${v.settings.lives || '預設'}・上限 ${v.settings.maxPlayers} 人（由房主設定）`)));
+        Stepper({ label: '每人生命', value: v.settings.lives, min: 0, max: 5, format: (x) => (x === 0 ? '預設' : x + ' 顆'), onChange: (n) => net.emit('room:settings', { lives: n }) }),
+        Select({ label: '樓層形狀', value: v.settings.shapes || 'off', options: SHAPE_OPTS, onChange: (d) => net.emit('room:settings', { shapes: d }) })]
+        : h('p', { class: 'muted' }, `難度 ${diffLabel(v.settings.difficulty)}・每人生命 ${v.settings.lives || '預設'}・形狀 ${(SHAPE_OPTS.find((o) => o.value === (v.settings.shapes || 'off')) || SHAPE_OPTS[0]).label}・上限 ${v.settings.maxPlayers} 人（由房主設定）`)));
     if (v.invite) {
       sideBox.append(sec('邀請朋友',
         h('div', { class: 'inv-btns' }, Btn({ label: '複製玩家連結', ico: 'link', size: 'sm', onClick: () => copyText(inviteLink(v.id, v.invite.player), '玩家邀請連結') }), Btn({ label: '複製觀戰連結', ico: 'eye', size: 'sm', onClick: () => copyText(inviteLink(v.id, v.invite.spectator), '觀戰邀請連結') })),
@@ -422,7 +428,7 @@ function game(p) {
   let s;
   if (p.kind === 'local') {
     s = GameScreen({
-      kind: 'local', mode: p.mode, diff: p.diff, players: p.players, lives: p.lives,
+      kind: 'local', mode: p.mode, diff: p.diff, players: p.players, lives: p.lives, shapes: p.shapes,
       onExit: (w) => (w === 'home' ? go('home') : go('setup', { mode: p.setupMode })),
       onAgain: () => go('game', p),
     });

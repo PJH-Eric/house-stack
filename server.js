@@ -148,7 +148,7 @@ io.on('connection', (socket) => {
   }
 
   socket.on('room:create', (d = {}, cb) => {
-    const { room, member } = rm.createRoom({ sid, name: d.name, maxPlayers: num(d.maxPlayers, 4), difficulty: d.difficulty, lives: num(d.lives, 0) });
+    const { room, member } = rm.createRoom({ sid, name: d.name, maxPlayers: num(d.maxPlayers, 4), difficulty: d.difficulty, lives: num(d.lives, 0), shapes: d.shapes });
     enter(room, member, null, cb);
   });
 
