@@ -171,7 +171,16 @@ export function GameScreen(cfg) {
     if (!online) { handleDrop(g.drop({ d })); return; }
     emit('game:drop', { d }, 6000).then((r) => { if (!r.ok && !destroyed) { S.canAct = S.turnId === S.myId && !S.over; if (board.turn) board.turn.active = S.canAct; syncControls(); if (r.msg) toast(r.msg); } });
   }
-  canvas.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button !== 0) return; drop(); });
+  // 點螢幕任何位置都能「放下」（滑鼠左鍵／觸控），但按鈕、資訊欄、聊天、彈窗、結算層、選單等互動元素自己處理
+  const NO_TAP = 'button, a, input, textarea, [role="button"], [role="menu"], [role="menuitemradio"], [role="dialog"], [role="alertdialog"], .side, .modal, .modal-mask, .result, .sel-pop, .gear-wrap, .toast, .sa-bar, .tf';
+  function onScreenPointer(e) {
+    if (destroyed || (e.pointerType === 'mouse' && e.button !== 0) || e.isPrimary === false) return;
+    if (hasModal() || S.resultShown || S.over) return;
+    if (e.target && e.target.closest && e.target.closest(NO_TAP)) return;
+    if (!root.isConnected) return;
+    drop();
+  }
+  window.addEventListener('pointerdown', onScreenPointer);
 
   function onKey(e) {
     if (destroyed) return;
@@ -399,7 +408,7 @@ export function GameScreen(cfg) {
       }
     },
     destroy() {
-      destroyed = true; GA && GA.reset(); cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('keydown', onKey);
+      destroyed = true; GA && GA.reset(); cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('keydown', onKey); window.removeEventListener('pointerdown', onScreenPointer);
       try { board.dispose(); } catch (e) { /* ignore */ }
     },
     onTurn(info) {

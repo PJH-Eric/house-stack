@@ -14,7 +14,8 @@
     "i18n:hans": "python3 scripts/gen-hans.py",
     "i18n:check": "node scripts/i18n-check.js",
     "langmenu:check": "node scripts/langmenu-check.js",
-    "overlap:check": "node scripts/overlap-check.js"
+    "overlap:check": "node scripts/overlap-check.js",
+    "tap:check": "node scripts/tap-check.js"
   },
   "engines": {
     "node": ">=18"

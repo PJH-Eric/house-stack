@@ -72,6 +72,7 @@ npm start            # http://localhost:3090（或 Windows 雙擊「啟動遊戲
 ```bash
 npm test             # 多語系字典、GA4、SEO 注入、暫停提示日期、規則／AI／房間單元測試（26 項）
 npm run verify       # npm test + 真實伺服器的線上整合檢查（22 項，含亂填資料防護、建房限速、latency:ping）
+npm run tap:check        # 點螢幕任何位置放下（桌機滑鼠／手機平板觸控），按鈕與彈窗不誤放（需先 npm start）
 npm run langmenu:check   # 語言選單：鍵盤／Esc／返回鍵，對局中不誤觸「放下」（需先 npm start）
 npm run overlap:check    # 右上角語言／設定／延遲鈕不蓋住標題與按鈕（三語 × 五種尺寸，需先 npm start）
 npm run i18n:check   # 瀏覽器檢查英文／簡體各畫面沒有殘留繁體字串、語言切換可用（需先 npm start）
