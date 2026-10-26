@@ -3,6 +3,7 @@
  * 所有玩家可見的控制項都由這裡封裝：按鈕、開關、滑桿、選單、輸入框、彈窗、捲動區（含自訂捲軸）。
  * 內部保留必要的語意元素與 ARIA，外觀完全由 css/style.css 的木質風格負責，不顯示瀏覽器預設控制項。
  */
+import { t } from './i18n.js';
 
 export function h(tag, attrs, ...kids) {
   const el = document.createElement(tag);
@@ -130,8 +131,8 @@ export function Slider({ label, value, min = 0, max = 100, step = 1, onChange, f
 export function Stepper({ label, value, min, max, onChange, format }) {
   let v = value;
   const out = h('span', { class: 'st-val', 'aria-live': 'polite' }, format ? format(v) : v);
-  const minus = Btn({ ico: 'minus', size: 'sm', ariaLabel: `${label} 減少`, onClick: () => set(v - 1) });
-  const plus = Btn({ ico: 'plus', size: 'sm', ariaLabel: `${label} 增加`, onClick: () => set(v + 1) });
+  const minus = Btn({ ico: 'minus', size: 'sm', ariaLabel: t('{label} 減少', { label }), onClick: () => set(v - 1) });
+  const plus = Btn({ ico: 'plus', size: 'sm', ariaLabel: t('{label} 增加', { label }), onClick: () => set(v + 1) });
   function set(n) { n = Math.max(min, Math.min(max, n)); if (n === v) return; v = n; out.textContent = format ? format(v) : v; onChange && onChange(v); sync(); }
   function sync() { minus.disabled = v <= min; plus.disabled = v >= max; }
   sync();
@@ -256,7 +257,7 @@ const modalStack = [];
 export function Modal({ title, body, actions, onClose, dismissible = true, cls, wide, role = 'dialog', labelledBy }) {
   const prev = document.activeElement;
   const titleId = 'mt' + Math.random().toString(36).slice(2, 7);
-  const closeBtn = dismissible ? IconBtn({ ico: 'close', label: '關閉', onClick: () => api.close(), size: 20, cls: 'modal-x' }) : null;
+  const closeBtn = dismissible ? IconBtn({ ico: 'close', label: t('關閉'), onClick: () => api.close(), size: 20, cls: 'modal-x' }) : null;
   const sa = ScrollArea(h('div', { class: 'modal-body' }, body), { cls: 'modal-scroll' });
   const dlg = h('div', { class: 'modal' + (wide ? ' modal-wide' : '') + (cls ? ' ' + cls : ''), role, 'aria-modal': 'true', 'aria-labelledby': title ? titleId : labelledBy, tabindex: '-1' },
     title ? h('div', { class: 'modal-head' }, h('h2', { id: titleId }, title), closeBtn) : closeBtn,
@@ -297,7 +298,7 @@ export const hasModal = () => modalStack.length > 0;
 
 /* ---------- 其他 ---------- */
 export function Hearts(n, max, cls = '') {
-  const w = h('span', { class: 'hearts ' + cls, role: 'img', 'aria-label': `生命 ${n}/${max}` });
+  const w = h('span', { class: 'hearts ' + cls, role: 'img', 'aria-label': t('生命 {n}/{max}', { n, max }) });
   for (let i = 0; i < max; i++) { const s = icon('heart', 16); s.classList.add(i < n ? 'on' : 'off'); w.append(s); }
   return w;
 }

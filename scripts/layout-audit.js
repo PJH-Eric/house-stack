@@ -25,7 +25,7 @@ function auditPage() {
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height || el.closest('[hidden]') || getComputedStyle(el).visibility === 'hidden') continue;
     const inScroll = el.closest('.sa-view');
-    if (!inScroll && (r.right > vw + 1 || r.left < -1 || r.bottom > vh + 1 || r.top < -1)) out.push(`超出視窗：${el.className} ${el.textContent.trim().slice(0, 12)}`);
+    if (!inScroll && (r.right > vw + 1 || r.left < -1 || r.bottom > vh + 1 || r.top < -1)) out.push(`超出視窗：${el.className} ${el.textContent.trim().slice(0, 12)} [${el.getAttribute('aria-label') || ''}] ${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.right)},${Math.round(r.bottom)}`);
     if (r.height < 30 && !el.classList.contains('btn-xs')) out.push(`命中區過小：${el.className} h=${Math.round(r.height)}`);
   }
   return out;
@@ -39,8 +39,8 @@ function auditPage() {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, hasTouch: key !== 'desktop' });
     const p = await ctx.newPage();
     const errs = []; p.on('pageerror', (e) => errs.push(e.message));
-    await p.goto(BASE); await p.waitForTimeout(500);
-    const check = async (label) => { await p.waitForTimeout(350); const r = await p.evaluate(auditPage); r.forEach((x) => { bad++; console.log(`✘ [${key}] ${label}: ${x}`); }); sum.push(`${key}/${label}:${r.length ? 'NG' : 'ok'}`); };
+    await p.goto(BASE + (process.env.LANG_CODE ? '?lang=' + process.env.LANG_CODE : '')); await p.waitForTimeout(500);
+    const check = async (label) => { await p.waitForTimeout(350); await p.waitForFunction(() => !document.getAnimations().some((x) => x.playState === 'running' && x.effect && x.effect.getTiming().iterations !== Infinity), null, { timeout: 4000 }).catch(() => {}); const r = await p.evaluate(auditPage); r.forEach((x) => { bad++; console.log(`✘ [${key}] ${label}: ${x}`); }); sum.push(`${key}/${label}:${r.length ? 'NG' : 'ok'}`); };
     await check('首頁');
     await p.click('.gear-btn'); await check('設定彈窗'); await p.keyboard.press('Escape');
     await p.evaluate(() => window.__app.go('setup', { mode: 'solo' })); await check('單人設定');

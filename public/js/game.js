@@ -3,6 +3,7 @@
  * 底部操作列、疊在遊戲畫面上的結算 overlay（再來一局／回到房間／回到首頁）。
  * 操作：點一下畫面／按「放下」／空白鍵 = 放下吊車上的樓層；鏡頭固定正對樓房。
  */
+import { t } from './i18n.js';
 import { h, icon, Btn, IconBtn, Modal, Hearts, Badge, toast, hideToast, hasModal, KeyCap, ScrollArea } from './ui.js';
 import { Board, PLAYER_COLORS } from './art.js';
 import * as A from './audio.js';
@@ -28,12 +29,12 @@ export function GameScreen(cfg) {
 
   const colorOf = (id) => { const p = S.players.find((q) => q.id === id); return PLAYER_COLORS[((p ? p.seat : 0) || 0) % PLAYER_COLORS.length]; };
   const seatOf = (id) => { const p = S.players.find((q) => q.id === id); return p ? p.seat : 0; };
-  const nameOf = (id) => (S.players.find((p) => p.id === id) || {}).name || '玩家';
+  const nameOf = (id) => (S.players.find((p) => p.id === id) || {}).name || t('玩家');
   const playerOf = (id) => S.players.find((p) => p.id === id);
 
-  const canvas = h('canvas', { class: 'stage-canvas', role: 'img', 'aria-label': '疊疊高樓 3D 遊戲畫面：吊車正在放下新的樓層' });
+  const canvas = h('canvas', { class: 'stage-canvas', role: 'img', 'aria-label': t('疊疊高樓 3D 遊戲畫面：吊車正在放下新的樓層') });
   const board = new Board(canvas);
-  board.sky.onStage = (name, k) => { if (k > 0 && !destroyed && !S.over) toast(`進入「${name}」`, 2200); };
+  board.sky.onStage = (name, k) => { if (k > 0 && !destroyed && !S.over) toast(t('進入「{name}」', { name }), 2200); };
   board.sky.onThunder = () => { if (!destroyed) A.sfx.thunder(); };
   const live = h('div', { class: 'sr-only', 'aria-live': 'polite' });
   const popLayer = h('div', { class: 'pop-layer', 'aria-hidden': 'true' });
@@ -60,6 +61,12 @@ export function GameScreen(cfg) {
     initFromState(g.publicState());
   }
 
+  /* ---------- 統計（GA4，僅送固定維度；沒有設定時完全不動作） ---------- */
+  const GA = window.GameAnalytics;
+  const gaKey = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  const gaParams = () => ({ mode: online ? 'online' : S.mode === 'solo' ? 'solo' : 'ai', players: S.players.length, difficulty: S.diff, variant: S.shapes, spectator: S.role === 'spectator' });
+  GA && GA.start(gaParams(), gaKey);
+
   /* ---------- 左側資訊欄 ---------- */
   const summaryBox = h('div', { class: 'sum' });
   const chat = online ? Chat({ onSend: (text) => emitQuiet('chat:send', { text }) }) : null;
@@ -69,59 +76,59 @@ export function GameScreen(cfg) {
   function section(title, body, open = true, extra, cls) {
     const wrap = h('section', { class: 'acc' + (open ? ' open' : '') + (cls ? ' ' + cls : '') });
     const head = h('button', { type: 'button', class: 'acc-head', 'aria-expanded': String(open) }, h('span', null, title), extra || null, h('span', { class: 'acc-caret', 'aria-hidden': 'true' }, '▾'));
-    head.addEventListener('click', () => { const o = !wrap.classList.contains('open'); wrap.classList.toggle('open', o); head.setAttribute('aria-expanded', String(o)); if (o && title === '聊天室') { S.unread = 0; syncUnread(); chat.refresh(); } });
+    head.addEventListener('click', () => { const o = !wrap.classList.contains('open'); wrap.classList.toggle('open', o); head.setAttribute('aria-expanded', String(o)); if (o && title === t('聊天室')) { S.unread = 0; syncUnread(); chat.refresh(); } });
     wrap.append(head, h('div', { class: 'acc-body' }, body));
     return wrap;
   }
-  const chatSection = online ? section('聊天室', chat.el, true, null, 'acc-chat') : null;
-  const aside = h('aside', { class: 'side', 'aria-label': '資訊欄' },
-    h('div', { class: 'side-head' }, h('b', null, '對局資訊'), IconBtn({ ico: 'chevL', label: '收合資訊欄', onClick: () => togglePanel(false), size: 20 })),
-    h('div', { class: 'side-body' }, section('對局摘要', ScrollArea(summaryBox, { cls: 'sum-scroll' }), true, null, 'acc-sum'), chatSection));
+  const chatSection = online ? section(t('聊天室'), chat.el, true, null, 'acc-chat') : null;
+  const aside = h('aside', { class: 'side', 'aria-label': t('資訊欄') },
+    h('div', { class: 'side-head' }, h('b', null, t('對局資訊')), IconBtn({ ico: 'chevL', label: t('收合資訊欄'), onClick: () => togglePanel(false), size: 20 })),
+    h('div', { class: 'side-body' }, section(t('對局摘要'), ScrollArea(summaryBox, { cls: 'sum-scroll' }), true, null, 'acc-sum'), chatSection));
 
   function stabClass(v) { return v > 0.55 ? 'ok' : v > 0.25 ? 'warn' : 'bad'; }
   function renderSummary() {
     summaryBox.textContent = '';
     const solo = S.mode === 'solo';
     const me = playerOf(S.myId);
-    summaryBox.append(h('div', { class: 'sum-badges' }, Badge(solo ? '單人挑戰' : online ? '線上輪流' : '對電腦輪流', 'wood'), Badge(diffLabel(S.diff), 'toy')));
+    summaryBox.append(h('div', { class: 'sum-badges' }, Badge(solo ? t('單人挑戰') : online ? t('線上輪流') : t('對電腦輪流'), 'wood'), Badge(diffLabel(S.diff), 'toy')));
     summaryBox.append(h('div', { class: 'sum-stats' },
-      h('div', { class: 'stat' }, h('small', null, '目前樓層'), h('b', null, S.height, h('em', null, ' 層'))),
-      h('div', { class: 'stat' }, h('small', null, solo ? '本局最高' : '回合'), h('b', null, solo ? S.peak : S.turnNo, h('em', null, solo ? ' 層' : ' 次')))));
-    if (solo) summaryBox.append(h('div', { class: 'stat wide' }, h('small', null, '得分'), h('b', null, me ? me.score : 0), S.combo > 1 ? h('em', { class: 'combo' }, ` 完美連擊 ×${S.combo}`) : null));
-    summaryBox.append(h('div', { class: 'stab-box' }, h('small', null, '穩定度（太低樓會倒）'), h('div', { class: 'stab ' + stabClass(S.stability), role: 'meter', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(S.stability * 100) }, h('i', { style: { width: Math.round(S.stability * 100) + '%' } }))));
-    if (solo) summaryBox.append(h('div', { class: 'sum-note' }, `歷史最高 ${Math.max(store.best(S.diff, S.shapes), S.peak)} 層`));
+      h('div', { class: 'stat' }, h('small', null, t('目前樓層')), h('b', null, S.height, h('em', null, t(' 層')))),
+      h('div', { class: 'stat' }, h('small', null, solo ? t('本局最高') : t('回合')), h('b', null, solo ? S.peak : S.turnNo, h('em', null, solo ? t(' 層') : t(' 次'))))));
+    if (solo) summaryBox.append(h('div', { class: 'stat wide' }, h('small', null, t('得分')), h('b', null, me ? me.score : 0), S.combo > 1 ? h('em', { class: 'combo' }, t(' 完美連擊 ×{combo}', { combo: S.combo })) : null));
+    summaryBox.append(h('div', { class: 'stab-box' }, h('small', null, t('穩定度（太低樓會倒）')), h('div', { class: 'stab ' + stabClass(S.stability), role: 'meter', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(S.stability * 100) }, h('i', { style: { width: Math.round(S.stability * 100) + '%' } }))));
+    if (solo) summaryBox.append(h('div', { class: 'sum-note' }, t('歷史最高 {v0} 層', { v0: Math.max(store.best(S.diff, S.shapes), S.peak) })));
     const ul = h('ul', { class: 'plist' });
     for (const p of S.players) {
       const mine = p.id === S.myId, turn = p.id === S.turnId && !S.over;
       ul.append(h('li', { class: 'pl' + (turn ? ' turn' : '') + (p.alive ? '' : ' out') },
         h('span', { class: 'dot', style: { background: PLAYER_COLORS[p.seat % PLAYER_COLORS.length] } }),
-        h('span', { class: 'pl-name' }, p.name, mine ? h('i', null, '（你）') : null, p.kind === 'ai' ? h('i', null, `・${diffLabel(p.ai)}`) : null),
-        p.alive ? Hearts(p.lives, Math.max(S.maxLives, p.lives)) : h('span', { class: 'pl-out' }, '淘汰'),
-        turn ? h('span', { class: 'pl-turn' }, '輪到') : null));
+        h('span', { class: 'pl-name' }, p.name, mine ? h('i', null, t('（你）')) : null, p.kind === 'ai' ? h('i', null, `・${diffLabel(p.ai)}`) : null),
+        p.alive ? Hearts(p.lives, Math.max(S.maxLives, p.lives)) : h('span', { class: 'pl-out' }, t('淘汰')),
+        turn ? h('span', { class: 'pl-turn' }, t('輪到')) : null));
     }
     summaryBox.append(ul);
-    if (S.role === 'spectator') summaryBox.append(h('div', { class: 'sum-note spec' }, icon('eye', 16), ' 你是觀戰者，可以聊天但不能操作'));
+    if (S.role === 'spectator') summaryBox.append(h('div', { class: 'sum-note spec' }, icon('eye', 16), t(' 你是觀戰者，可以聊天但不能操作')));
     summaryBox.append(h('div', { class: 'keys' },
-      h('div', null, KeyCap('空白'), ' 放下樓層'), h('div', null, KeyCap('Esc'), ' 選單'),
-      h('div', { class: 'keys-note' }, '觸控：點一下畫面或按「放下」。樓層重心要落在下方樓層的重疊範圍內，否則整段會倒！越高風越大：風會把吊車吹偏，樓層落下時也會被吹走，白框是已算入風的預測落點。')));
+      h('div', null, KeyCap(t('空白')), t(' 放下樓層')), h('div', null, KeyCap('Esc'), t(' 選單')),
+      h('div', { class: 'keys-note' }, t('觸控：點一下畫面或按「放下」。樓層重心要落在下方樓層的重疊範圍內，否則整段會倒！越高風越大：風會把吊車吹偏，樓層落下時也會被吹走，白框是已算入風的預測落點。'))));
   }
   function syncUnread() { unreadBadge.hidden = !S.unread; unreadBadge.textContent = S.unread > 9 ? '9+' : S.unread; }
 
   /* ---------- 舞台：上方列、操作列、結算 ---------- */
   const banner = h('div', { class: 'turn-banner', role: 'status' });
   const timerEl = h('span', { class: 'turn-timer' });
-  const infoBtn = Btn({ ico: 'info', label: '資訊', size: 'sm', onClick: () => togglePanel(), badge: null, cls: 'info-btn' });
+  const infoBtn = Btn({ ico: 'info', label: t('資訊'), size: 'sm', onClick: () => togglePanel(), badge: null, cls: 'info-btn' });
   infoBtn.append(unreadBadge);
-  const menuBtn = IconBtn({ ico: 'home', label: online ? '離開房間' : '暫停選單', onClick: () => openMenu(), size: 20, cls: 'menu-btn' });
+  const menuBtn = IconBtn({ ico: 'home', label: online ? t('離開房間') : t('暫停選單'), onClick: () => openMenu(), size: 20, cls: 'menu-btn' });
   menuBtn.dataset.back = '1';
-  const heightChip = h('div', { class: 'hud-chip', role: 'img', 'aria-label': '目前樓層' }, h('b', null, '1'));
+  const heightChip = h('div', { class: 'hud-chip', role: 'img', 'aria-label': t('目前樓層') }, h('b', null, '1'));
   const towerIco = h('span', { class: 'hud-tower', 'aria-hidden': 'true' });
   towerIco.innerHTML = '<svg viewBox="0 0 24 56" width="30" height="70"><path fill="#f2b632" stroke="#a8741a" stroke-width="1.2" d="M12 1l1.2 8h-2.4L12 1Zm-3.5 9h7l-.8 8h2.3l-.5 6h-3l.6 5h2l1.4 18h-12l1.4-18h2l.6-5h-3l-.5-6h2.3l-.8-8Z"/><rect x="9" y="33" width="6" height="6" rx="3" fill="#fff6c9"/></svg>';
   const hudCol = h('div', { class: 'hud-col' }, towerIco, heightChip);
   const stabMini = h('div', { class: 'stab mini ok', 'aria-hidden': 'true' }, h('i'));
   const starIco = h('span', { class: 'star-ico', 'aria-hidden': 'true' });
   starIco.innerHTML = '<svg viewBox="-12 -12 24 24" width="44" height="44"><path fill="#ffd23c" stroke="#d9941a" stroke-width="1.4" stroke-linejoin="round" d="M0-10l2.9 6.2 6.8.8-5 4.6 1.4 6.7L0 4.8l-6.1 3.5 1.4-6.7-5-4.6 6.8-.8Z"/></svg>';
-  const heartsCol = h('div', { class: 'hud-hearts', 'aria-label': '剩餘愛心' });
+  const heartsCol = h('div', { class: 'hud-hearts', 'aria-label': t('剩餘愛心') });
   const hudBL = h('div', { class: 'hud-bl' }, hudCol, heartsCol);
   const windChip = h('div', { class: 'wind-chip', role: 'status', 'aria-live': 'off' });
   const windArrow = h('span', { class: 'wind-arrow', 'aria-hidden': 'true' });
@@ -132,16 +139,16 @@ export function GameScreen(cfg) {
     const w = (sw && sw.wind) || 0, lvl = Math.min(5, Math.round(Math.abs(w) * 5));
     const space = !!(sw && sw.space);
     windChip.classList.toggle('calm', lvl === 0 && !space); windChip.classList.toggle('space', space); windArrow.style.transform = w < 0 ? 'scaleX(-1)' : '';
-    windTxt.textContent = space ? '無重力・磁吸' : lvl === 0 ? '無風' : `風 ${lvl} 級`;
+    windTxt.textContent = space ? t('無重力・磁吸') : lvl === 0 ? t('無風') : t('風 {lvl} 級', { lvl });
     [...windBars.children].forEach((b, i) => b.classList.toggle('on', i < lvl));
-    if (space) { windChip.setAttribute('aria-label', '太空無重力：樓層會被磁力吸向中心，下落與搖晃都變慢'); return; }
-    windChip.setAttribute('aria-label', lvl === 0 ? '目前無風' : `${w > 0 ? '向右' : '向左'}吹，風力 ${lvl} 級（最大 5 級）`);
+    if (space) { windChip.setAttribute('aria-label', t('太空無重力：樓層會被磁力吸向中心，下落與搖晃都變慢')); return; }
+    windChip.setAttribute('aria-label', lvl === 0 ? t('目前無風') : t('{v0}吹，風力 {lvl} 級（最大 5 級）', { v0: w > 0 ? t('向右') : t('向左'), lvl }));
   }
   const topbar = h('div', { class: 'topbar' }, h('div', { class: 'tb-left' }, infoBtn, menuBtn), h('div', { class: 'tb-center' }, banner, timerEl), h('div', { class: 'tb-right' }, starIco, stabMini));
 
-  const btnDrop = Btn({ ico: 'drop', label: '放下', kind: 'primary', size: 'lg', keycap: '空白', onClick: () => drop(), cls: 'drop-btn' });
+  const btnDrop = Btn({ ico: 'drop', label: t('放下'), kind: 'primary', size: 'lg', keycap: t('空白'), onClick: () => drop(), cls: 'drop-btn' });
   const controls = h('div', { class: 'controls' }, btnDrop);
-  const specBar = h('div', { class: 'spec-bar' }, icon('eye', 18), h('span', null, '觀戰中'));
+  const specBar = h('div', { class: 'spec-bar' }, icon('eye', 18), h('span', null, t('觀戰中')));
   const view = h('div', { class: 'stage-view' }, canvas, popLayer, topbar, hudBL, windChip);
   const stage = h('main', { class: 'stage' }, view, S.role === 'spectator' ? specBar : controls, live);
   const root = h('div', { class: 'game' + (matchMedia('(min-width: 900px)').matches ? ' panel-open' : '') }, aside, stage);
@@ -193,7 +200,7 @@ export function GameScreen(cfg) {
     if (info.stability) { S.stability = info.stability.stability; board.setStability(info.stability.maxRatio); }
     renderSummary(); syncControls();
     const p = playerOf(S.turnId);
-    live.textContent = me ? '輪到你了，吊車正在擺動' : `輪到 ${p ? p.name : ''}`;
+    live.textContent = me ? t('輪到你了，吊車正在擺動') : t('輪到 {v0}', { v0: p ? p.name : '' });
     if (me) { A.sfx.turn(); A.vibrate([20, 40, 20]); }
     if (!online && p && p.kind === 'ai') aiTurn(p, turnToken);
   }
@@ -227,7 +234,7 @@ export function GameScreen(cfg) {
   function showPop(pos, res) {
     if (store.get().reduceMotion) return;
     const pr = board.project(pos.x, pos.y, pos.z);
-    const el = h('div', { class: 'pop' + (res.combo >= 3 ? ' big' : ''), style: { left: pr.x + 'px', top: pr.y + 'px' } }, res.combo > 1 ? `完美 ×${res.combo}！` : '完美！', h('small', null, `+${res.gain}`));
+    const el = h('div', { class: 'pop' + (res.combo >= 3 ? ' big' : ''), style: { left: pr.x + 'px', top: pr.y + 'px' } }, res.combo > 1 ? t('完美 ×{combo}！', { combo: res.combo }) : t('完美！'), h('small', null, `+${res.gain}`));
     popLayer.append(el); setTimeout(() => el.remove(), 1300);
   }
 
@@ -240,9 +247,9 @@ export function GameScreen(cfg) {
     if (res.toppled) {
       const lost = p && p.lives < prevLives;
       const cnt = res.fallen.length;
-      toast(`${p ? p.name : ''} ${res.missed ? '沒接到樓層' : `讓 ${cnt} 層樓倒了`}${lost ? '，失去 1 顆愛心' : ''}`);
+      toast(`${p ? p.name : ''} ${res.missed ? t('沒接到樓層') : t('讓 {cnt} 層樓倒了', { cnt })}${lost ? t('，失去 1 顆愛心') : ''}`);
       if (res.playerId === S.myId) { A.sfx.lose(); A.vibrate([60, 40, 60]); }
-      if (p && !p.alive && !res.over) toast(`${p.name} 被淘汰了`);
+      if (p && !p.alive && !res.over) toast(t('{name} 被淘汰了', { name: p.name }));
     }
     renderSummary();
     A.setAltitude(board.altitude);
@@ -266,41 +273,42 @@ export function GameScreen(cfg) {
     hideToast();
     if (destroyed || resultEl) return;
     S.resultShown = true;
+    if (GA) GA.end({ result: S.mode === 'solo' ? (S.summit ? 'complete' : 'dnf') : S.winnerId ? (S.winnerId === S.myId ? 'win' : 'lose') : 'draw', variant: S.shapes }, gaKey);
     const solo = S.mode === 'solo';
     const me = playerOf(S.myId);
     let title, sub, tone = 'lose';
     if (solo) {
       store.set({ played: store.get().played + 1 });
       S.newBest = store.setBest(S.diff, S.peak, S.shapes);
-      title = S.summit ? '登上天際！' : '挑戰結束'; sub = `最高蓋到 ${S.peak} 層`; tone = S.summit || S.newBest ? 'win' : 'plain';
+      title = S.summit ? t('登上天際！') : t('挑戰結束'); sub = t('最高蓋到 {peak} 層', { peak: S.peak }); tone = S.summit || S.newBest ? 'win' : 'plain';
     } else if (S.winnerId) {
       const win = S.winnerId === S.myId;
-      title = S.role === 'spectator' ? `${nameOf(S.winnerId)} 獲勝` : win ? '你贏了！' : `${nameOf(S.winnerId)} 獲勝`;
-      sub = S.summit ? '大家一起登頂，由愛心和得分決勝' : win ? '你是最後留下來的人' : '樓倒太多次的人出局了'; tone = win ? 'win' : S.role === 'spectator' ? 'plain' : 'lose';
-    } else { title = S.summit ? '登頂平手！' : '對局結束'; sub = ''; tone = 'plain'; }
+      title = S.role === 'spectator' ? t('{v0} 獲勝', { v0: nameOf(S.winnerId) }) : win ? t('你贏了！') : t('{v0} 獲勝', { v0: nameOf(S.winnerId) });
+      sub = S.summit ? t('大家一起登頂，由愛心和得分決勝') : win ? t('你是最後留下來的人') : t('樓倒太多次的人出局了'); tone = win ? 'win' : S.role === 'spectator' ? 'plain' : 'lose';
+    } else { title = S.summit ? t('登頂平手！') : t('對局結束'); sub = ''; tone = 'plain'; }
     (tone === 'win' ? A.sfx.win : A.sfx.lose)();
     if (tone === 'win') board.confettiAtTop();
 
     const rows = h('ul', { class: 'res-list' }, S.players.map((p) => h('li', { class: p.id === S.winnerId ? 'win' : '' },
-      h('span', { class: 'dot', style: { background: PLAYER_COLORS[p.seat % PLAYER_COLORS.length] } }), h('span', null, p.name, p.id === S.myId ? '（你）' : ''),
-      p.id === S.winnerId ? icon('crown', 18) : null, h('em', null, `${p.score} 分・倒 ${p.topples} 次`))));
+      h('span', { class: 'dot', style: { background: PLAYER_COLORS[p.seat % PLAYER_COLORS.length] } }), h('span', null, p.name, p.id === S.myId ? t('（你）') : ''),
+      p.id === S.winnerId ? icon('crown', 18) : null, h('em', null, t('{score} 分・倒 {topples} 次', { score: p.score, topples: p.topples })))));
     const statLine = h('div', { class: 'res-stats' },
-      h('div', null, h('small', null, solo ? '最高樓層' : '塔高'), h('b', null, (solo ? S.peak : S.height) + ' 層')),
-      h('div', null, h('small', null, solo ? '得分' : '總回合'), h('b', null, solo ? (me ? me.score : 0) : S.turnNo)),
-      solo ? h('div', null, h('small', null, '最佳連擊'), h('b', null, '×' + S.bestCombo)) : null);
+      h('div', null, h('small', null, solo ? t('最高樓層') : t('塔高')), h('b', null, (solo ? S.peak : S.height) + t(' 層'))),
+      h('div', null, h('small', null, solo ? t('得分') : t('總回合')), h('b', null, solo ? (me ? me.score : 0) : S.turnNo)),
+      solo ? h('div', null, h('small', null, t('最佳連擊')), h('b', null, '×' + S.bestCombo)) : null);
 
-    const again = Btn({ label: '再來一局', kind: 'primary', size: 'lg', block: true, onClick: () => doAgain(again) });
-    const room = Btn({ label: '回到房間', size: 'md', block: true, onClick: () => exitTo('room') });
-    const home = Btn({ label: '回到首頁', size: 'md', block: true, onClick: () => exitTo('home') });
-    if (online && !S.isHost && S.role === 'player') again.querySelector('.btn-label').textContent = '再來一局（準備）';
-    if (online && S.role === 'spectator') { again.disabled = true; again.title = '觀戰者無法開局，請到房間入座'; }
-    resultEl = h('div', { class: 'result', role: 'dialog', 'aria-modal': 'true', 'aria-label': '結算' }, ScrollArea(h('div', { class: 'res-wrap' },
+    const again = Btn({ label: t('再來一局'), kind: 'primary', size: 'lg', block: true, onClick: () => doAgain(again) });
+    const room = Btn({ label: t('回到房間'), size: 'md', block: true, onClick: () => exitTo('room') });
+    const home = Btn({ label: t('回到首頁'), size: 'md', block: true, onClick: () => exitTo('home') });
+    if (online && !S.isHost && S.role === 'player') again.querySelector('.btn-label').textContent = t('再來一局（準備）');
+    if (online && S.role === 'spectator') { again.disabled = true; again.title = t('觀戰者無法開局，請到房間入座'); }
+    resultEl = h('div', { class: 'result', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('結算') }, ScrollArea(h('div', { class: 'res-wrap' },
       h('div', { class: `res-card ${tone}` },
         h('h2', null, title), sub ? h('p', { class: 'res-sub' }, sub) : null,
-        S.newBest ? h('div', { class: 'res-new' }, '新紀錄！') : null,
+        S.newBest ? h('div', { class: 'res-new' }, t('新紀錄！')) : null,
         statLine, solo ? null : rows,
         h('div', { class: 'res-actions' }, again, room, home),
-        h('p', { class: 'res-hint', id: 'res-hint' }, !online ? '「回到房間」會回到開局設定' : S.isHost ? '房主按「再來一局」立即開局（需全員準備）' : '按「再來一局」代表你已準備好'))), { cls: 'res-scroll' }));
+        h('p', { class: 'res-hint', id: 'res-hint' }, !online ? t('「回到房間」會回到開局設定') : S.isHost ? t('房主按「再來一局」立即開局（需全員準備）') : t('按「再來一局」代表你已準備好')))), { cls: 'res-scroll' }));
     stage.append(resultEl);
     resultEl.setAttribute('tabindex', '-1'); // 焦點放在對話框本身，避免玩家連按空白時誤觸「再來一局」
     setTimeout(() => resultEl.focus({ preventScroll: true }), 60);
@@ -311,10 +319,10 @@ export function GameScreen(cfg) {
     if (!online) { cfg.onAgain && cfg.onAgain(); return; }
     if (S.isHost) {
       const r = await emit('room:start', {});
-      if (!r.ok) toast(r.msg || '還不能開始');
+      if (!r.ok) toast(r.msg || t('還不能開始'));
     } else {
       const r = await emit('room:ready', { ready: true });
-      if (r.ok) { btn.disabled = true; btn.querySelector('.btn-label').textContent = '已準備，等待房主…'; }
+      if (r.ok) { btn.disabled = true; btn.querySelector('.btn-label').textContent = t('已準備，等待房主…'); }
     }
   }
   function exitTo(where) { cfg.onExit && cfg.onExit(where); }
@@ -323,12 +331,12 @@ export function GameScreen(cfg) {
     if (hasModal() || S.over || S.resultShown) return;
     S.paused = !online;
     const m = Modal({
-      title: online ? '選單' : '暫停', cls: 'modal-sm',
-      body: h('p', { class: 'muted' }, online ? '對局不會因為你開選單而暫停。' : '遊戲已暫停，吊車停在原地。'),
+      title: online ? t('選單') : t('暫停'), cls: 'modal-sm',
+      body: h('p', { class: 'muted' }, online ? t('對局不會因為你開選單而暫停。') : t('遊戲已暫停，吊車停在原地。')),
       actions: [
-        Btn({ label: '繼續', kind: 'primary', block: true, onClick: () => m.close() }),
-        !online ? Btn({ label: '重新開始', block: true, onClick: () => { m.close(true); S.paused = false; cfg.onAgain && cfg.onAgain(); } }) : null,
-        Btn({ label: online ? '離開房間回首頁' : '回到首頁', kind: 'danger', block: true, onClick: () => { m.close(true); S.paused = false; exitTo('home'); } }),
+        Btn({ label: t('繼續'), kind: 'primary', block: true, onClick: () => m.close() }),
+        !online ? Btn({ label: t('重新開始'), block: true, onClick: () => { m.close(true); S.paused = false; cfg.onAgain && cfg.onAgain(); } }) : null,
+        Btn({ label: online ? t('離開房間回首頁') : t('回到首頁'), kind: 'danger', block: true, onClick: () => { m.close(true); S.paused = false; exitTo('home'); } }),
       ],
       onClose: () => { S.paused = false; },
     });
@@ -337,11 +345,11 @@ export function GameScreen(cfg) {
   /* ---------- 橫幅 ---------- */
   function updateBanner() {
     let text, color = '#35507a';
-    if (S.over) text = S.summit ? '登頂！' : '對局結束';
-    else if (!S.turnId) text = '準備開始…';
-    else if (S.mode === 'solo') text = S.canAct ? '抓準時機，點一下放下！' : '準備中…';
-    else if (S.canAct) { text = '輪到你了！點一下放下'; color = colorOf(S.myId); }
-    else { const p = playerOf(S.turnId); text = `${p ? p.name : ''}${p && p.kind === 'ai' ? ' 瞄準中…' : ' 正在操作吊車'}`; color = colorOf(S.turnId); }
+    if (S.over) text = S.summit ? t('登頂！') : t('對局結束');
+    else if (!S.turnId) text = t('準備開始…');
+    else if (S.mode === 'solo') text = S.canAct ? t('抓準時機，點一下放下！') : t('準備中…');
+    else if (S.canAct) { text = t('輪到你了！點一下放下'); color = colorOf(S.myId); }
+    else { const p = playerOf(S.turnId); text = `${p ? p.name : ''}${p && p.kind === 'ai' ? t(' 瞄準中…') : t(' 正在操作吊車')}`; color = colorOf(S.turnId); }
     banner.textContent = text; banner.style.setProperty('--accent', color);
     if (S.mode === 'solo' || S.over || !S.deadline) timerEl.textContent = '';
     else { const left = Math.max(0, Math.ceil((S.deadline - Date.now()) / 1000)); timerEl.textContent = `${left}`; timerEl.classList.toggle('low', left <= 5); }
@@ -390,7 +398,7 @@ export function GameScreen(cfg) {
       }
     },
     destroy() {
-      destroyed = true; cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('keydown', onKey);
+      destroyed = true; GA && GA.reset(); cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('keydown', onKey);
       try { board.dispose(); } catch (e) { /* ignore */ }
     },
     onTurn(info) {
@@ -411,7 +419,7 @@ export function GameScreen(cfg) {
       }
       if (resultEl) {
         const hint = resultEl.querySelector('#res-hint');
-        if (hint) hint.textContent = S.isHost ? '房主按「再來一局」立即開局（需全員準備）' : '按「再來一局」代表你已準備好';
+        if (hint) hint.textContent = S.isHost ? t('房主按「再來一局」立即開局（需全員準備）') : t('按「再來一局」代表你已準備好');
       }
     },
     onForfeit(d) { S.players = d.players.map((p) => ({ ...p })); S.over = true; S.winnerId = d.winnerId; S.canAct = false; syncControls(); renderSummary(); if (!board.busy) setTimeout(showResult, 300); },

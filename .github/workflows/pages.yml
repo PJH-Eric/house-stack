@@ -3,13 +3,19 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      server_url:
+        description: "遊戲伺服器網址（留空就用 repo 變數 GAME_SERVER_URL）"
+        required: false
+        type: string
 permissions:
   contents: read
   pages: write
   id-token: write
+# 同時只跑一個佈署；不取消跑到一半的那一次，避免留下半套站台。
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,12 +24,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: 建置（注入 GAME_SERVER_URL）
+          cache: npm
+      - run: npm ci
+      - name: 測試（多語系、GA4、SEO 注入、規則；沒過就不佈署）
+        run: npm test
+      - name: 建置（注入 GAME_SERVER_URL，並把 SEO 與 GA4 寫進 dist/index.html）
         run: node scripts/build-pages.js
         env:
           # Repository → Settings → Secrets and variables → Actions → Variables
-          GAME_SERVER_URL: ${{ vars.GAME_SERVER_URL }}
+          GAME_SERVER_URL: ${{ inputs.server_url || vars.GAME_SERVER_URL }}
+          # 選填：GA4 Measurement ID（預設用遊戲小小島共用的 ID）
+          GA_MEASUREMENT_ID: ${{ vars.GA_MEASUREMENT_ID }}
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

@@ -21,4 +21,10 @@ fs.rmSync(dist, { recursive: true, force: true });
 fs.cpSync(src, dist, { recursive: true });
 fs.writeFileSync(path.join(dist, 'env.js'), `window.__GAME_CONFIG__ = ${JSON.stringify({ serverUrl: url })};\n`, 'utf8');
 fs.writeFileSync(path.join(dist, '.nojekyll'), '');
+
+/* SEO 與 GA4 只寫進 dist/（不改動原始碼）。GA_MEASUREMENT_ID 可用環境變數覆寫；本機與預覽網址不會載入 GA。 */
+const { inject } = require('./inject-seo');
+const cfg = inject(root, process.env, dist);
+fs.copyFileSync(path.join(dist, 'index.html'), path.join(dist, '404.html')); // 直接開子路徑時也回到遊戲
+console.log('已注入 SEO 與 GA4：' + cfg.siteUrl);
 console.log(`已建置到 dist/（serverUrl = ${url || '(未設定)'}）`);

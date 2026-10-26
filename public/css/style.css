@@ -132,7 +132,7 @@ button, input { font: inherit; color: inherit; }
 @keyframes pop { from { transform: scale(.92) translateY(10px); opacity: 0; } }
 
 /* ---------- 全域設定入口 ---------- */
-.gear-wrap { position: fixed; top: calc(10px + var(--safe-t)); right: calc(10px + var(--safe-r)); z-index: 90; }
+.gear-wrap { position: fixed; top: calc(10px + var(--safe-t)); right: calc(10px + var(--safe-r)); z-index: 90; display: flex; align-items: center; gap: 8px; }
 .gear-btn { width: 50px; height: 50px; }
 
 /* ---------- 頁面外框 ---------- */
@@ -387,3 +387,20 @@ button, input { font: inherit; color: inherit; }
 .wind-chip.space { background: rgba(38,32,86,.94); border-color: #b7a8ff; color: #e6deff; box-shadow: 0 3px 0 rgba(10,8,40,.6); }
 .wind-chip.space .wind-arrow, .wind-chip.space .wind-bars { display: none; }
 @media (orientation: landscape) and (max-height: 520px) { .wind-chip { bottom: 68px; padding: 3px 8px 3px 6px; } .wind-chip b { font-size: .8rem; } .wind-bars { display: none; } }
+
+/* 回遊戲大廳（只在首頁，左上角） */
+.lobby-link { position: absolute; z-index: 5; top: calc(10px + var(--safe-t)); left: calc(10px + var(--safe-l)); display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 14px 0 8px; border-radius: 999px; border: 3px solid var(--wood-4); background: var(--paper); color: var(--ink); font-weight: 800; font-size: 15px; text-decoration: none; box-shadow: 0 3px 0 var(--wood-4); }
+.lobby-link:hover { background: var(--paper-2); }
+.lobby-link:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--wood-4); }
+.lobby-link:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+
+/* 連線延遲徽章（線上畫面，設定鈕左邊） */
+.latency { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px 0 8px; border-radius: 999px; border: 2px solid var(--wood-4); background: var(--paper); color: var(--ink); font: 800 12px/1 var(--font); white-space: nowrap; pointer-events: none; user-select: none; --dot: #958d91; }
+.latency[hidden] { display: none; }
+.latency__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
+.latency__value { font-variant-numeric: tabular-nums; }
+.latency__unit { opacity: .6; font-size: 10px; }
+.latency.is-good { --dot: #34b45b; }
+.latency.is-warn { --dot: #f0a126; }
+.latency.is-bad { --dot: #e04444; border-color: #e04444; }
+@media (max-width: 420px) { .latency__unit { display: none; } }

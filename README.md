@@ -70,12 +70,23 @@ npm start            # http://localhost:3090（或 Windows 雙擊「啟動遊戲
 ## 測試與檢查
 
 ```bash
-npm run verify       # 規則／AI／房間單元測試（26 項）+ 真實伺服器的線上整合檢查（21 項，含亂填資料防護與建房限速）
+npm test             # 多語系字典、GA4、SEO 注入、暫停提示日期、規則／AI／房間單元測試（26 項）
+npm run verify       # npm test + 真實伺服器的線上整合檢查（22 項，含亂填資料防護、建房限速、latency:ping）
+npm run i18n:check   # 瀏覽器檢查英文／簡體各畫面沒有殘留繁體字串、語言切換可用（需先 npm start）
 npm run audit        # 版面巡檢（Playwright）：5 種尺寸方向 × 所有畫面（BASE=http://localhost:3090/）
 npm run screenshots  # 擷取實際遊戲畫面到 screenshots/（可用 ONLY=… 分批）
 node scripts/online-ui.js   # 3 個瀏覽器（房主／玩家／觀戰）的線上畫面端對端
 ```
 `audit`、`screenshots` 需要 Playwright 瀏覽器與執行中的伺服器。
+
+## 多語系、GA4、SEO 與其他非遊戲機制（沿用 shoot-balloon 等專案的做法）
+
+- **多語系**：繁體中文（預設）、简体中文、English。語言決定順序 `?lang=` → localStorage（key `game-island-lang`，與遊戲大廳／其他遊戲同源共用）→ 繁中。設定彈窗最上方可切換；首頁、設定、教學、大廳畫面切換後會重新載入以完整套用，對局／房間中不打斷，離開後套用。字典以**繁中原文當 key**：程式裡寫 `t('開始')`、含變數 `t('最高蓋到 {peak} 層', { peak })`；英文在 `locales.js`，簡體由 `python3 scripts/gen-hans.py`（OpenCC）產生，用語不理想寫進該腳本的 `OVERRIDES`。伺服器送出的中文訊息（房間錯誤、系統聊天）由 `net.js` 以 `tm()` 轉成目前語言。新增文字後 `npm test` 會檢查缺漏。
+- **GA4**：`analytics.js` 只在 `pjh-eric.github.io` 且有 Measurement ID 時載入 Google tag；本機、預覽網址與 `file://` 完全不動作。只送固定維度的事件（`game_start`／`game_end`／`room_create`／`room_join`／`lobby_click`／`page_view` 與模式、難度、形狀、人數、結果、時長、語言），**不送暱稱、房號、種子或邀請 token**，並關閉廣告個人化。Measurement ID 預設為遊戲小小島共用的 ID，可用 repo 變數 `GA_MEASUREMENT_ID` 覆寫；沒有任何秘密放進前端。
+- **SEO**：`seo.config.json` ＋ `scripts/inject-seo.js` 在建置時把 title／description／canonical／Open Graph／Twitter／JSON-LD 與 GA 設定寫進 `dist/index.html`，並產生 `sitemap.xml`（`public/robots.txt` 指向它）；原始碼的 `public/index.html` 不會被改動。封面圖 `assets/images/cover.webp` 與圖示請換成正式美術。
+- **線上延遲徽章**：線上大廳／房間／線上對局時，右上角設定鈕左邊顯示往返延遲（≤30ms 綠、<100ms 黃、其餘紅），每 2.5 秒用 `latency:ping` 量測，離開線上畫面即停止。
+- **伺服器暫停提示**：在線上大廳／等待房間連續 30 秒連不上伺服器，才跳出「線上暫時無法連線（免費額度於次月 1 日重置，可繼續玩單機）」；首頁、單機與對局中不計時，連上即取消，同一次故障只提示一次。
+- **回遊戲大廳**：首頁左上角連結（帶 `?lang=` 同步語言），點擊會送 `lobby_click`。
 
 ## 專案結構
 
@@ -88,6 +99,10 @@ public/vendor/        three.module.min.js（r170，隨專案附上）
 public/js/game.js     對局畫面：資訊欄（摘要＋聊天室）、HUD、操作列、結算 overlay
 public/js/app.js      路由、首頁、設定、教學、大廳、房間
 public/js/config.js   單一連線設定模組（讀 env.js 的 GAME_SERVER_URL）
+public/js/i18n.js     多語系核心（繁中／简体／English）；locales.js（英文）、locales-hans.js（簡體，自動產生）
+public/js/analytics.js GA4 事件（只送固定維度，見下方「多語系與統計」）
+public/js/latency.js  線上連線延遲徽章；public/js/outage.js 伺服器暫停提示
+seo.config.json       SEO／分享預覽設定；scripts/inject-seo.js 建置時注入
 lib/rooms.js          房間／邀請／權限／生命週期（純邏輯）
 server.js             Express + Socket.IO、/health
 ```
@@ -100,7 +115,7 @@ server.js             Express + Socket.IO、/health
 > Render 不支援修改既有服務的 region；已建立在其他 region 的服務需建立替代服務、再更新 `GAME_SERVER_URL`，確認 `/health` 與線上對局正常後才停用舊服務。
 
 **前端（GitHub Pages）**：Repository → Settings → Pages → Source 選 *GitHub Actions*；
-Settings → Secrets and variables → Actions → **Variables** 新增一個變數 `GAME_SERVER_URL` = Render 後端的公開 HTTPS 網址（例如 `https://house-stack-server.onrender.com`）。推送到 `main` 即由 `.github/workflows/pages.yml` 建置並注入。
+Settings → Secrets and variables → Actions → **Variables** 新增一個變數 `GAME_SERVER_URL` = Render 後端的公開 HTTPS 網址（例如 `https://house-stack-server.onrender.com`）。推送到 `main` 即由 `.github/workflows/pages.yml` 先跑 `npm test`、再建置並注入（可另設 `GA_MEASUREMENT_ID` 變數；`.github/workflows/ci.yml` 每次 push／PR 跑測試）。
 前端沒有任何寫死的伺服器網址；production 不會回退到 localhost；未設定時線上對戰會顯示可讀的說明，單機與對電腦仍可玩。
 
 **免費層注意**：Render 免費服務閒置會休眠，第一次連線可能需要約 30 秒（大廳會顯示等待提示）；房間只存在記憶體，服務重啟就消失，視為可清理的暫時狀態，不做伺服器端排行榜。
@@ -119,4 +134,5 @@ Settings → Secrets and variables → Actions → **Variables** 新增一個變
 - 邀請連結不設時限，與房間同生命週期，房主可「撤銷並重發」；玩家席滿或對局進行中，玩家邀請會轉成觀戰並明確提示。
 - 邀請連結不會自動進房：先停在大廳顯示房間與可編輯暱稱，確認後才加入；伺服器消毒暱稱，角色由 token 決定。
 - 風沒有設定開關（規則層有 `wind` 選項）；尚未實作隕石與「慣性釋放」等其他無重力玩法。
-- 需要支援 WebGL 的瀏覽器；不支援時顯示說明頁。純文字教學；繁體中文介面。
+- 需要支援 WebGL 的瀏覽器；不支援時顯示說明頁。純文字教學；介面支援繁中／简体／English（沒有其他語言）。
+- GA4 的 Measurement ID 沿用遊戲小小島共用的 ID、站台網址假設為 `https://pjh-eric.github.io/house-stack/`（repo 名稱 `house-stack`）；若實際 repo 名稱不同，請改 `seo.config.json`。簡體中文為 OpenCC 自動轉換、英文為人工翻譯，尚未經母語者校對。

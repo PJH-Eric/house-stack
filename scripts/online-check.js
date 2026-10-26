@@ -34,6 +34,12 @@ const until = async (fn, ms = 20000, label = '') => {
     for (let i = 0; i < 50; i++) { try { health = await (await fetch(URL + '/health')).json(); break; } catch { await wait(100); } }
     assert.ok(health && health.ok); step('/health 可用');
 
+    { // 連線延遲量測：latency:ping 只回 ack
+      const lc = await client();
+      const t0 = Date.now(); const lr = await Promise.race([emit(lc, 'latency:ping', { at: t0 }), wait(1500).then(() => 'timeout')]);
+      assert.notStrictEqual(lr, 'timeout', 'latency:ping 沒有回 ack'); lc.close();
+      step('latency:ping 會回 ack（連線延遲徽章用）');
+    }
     { // 惡意／錯誤的事件資料不能讓伺服器掛掉，也都要有回應
       const f = await client();
       const bads = [undefined, null, 5, 'x', [], {}, { name: {} }, { maxPlayers: 'NaN', difficulty: {}, lives: Infinity, shapes: [] }, { roomId: {}, token: [] }];

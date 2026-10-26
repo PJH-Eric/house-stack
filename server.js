@@ -168,6 +168,9 @@ io.on('connection', (socket) => {
     pushState(room);
   }
 
+  // 連線延遲量測：只回 ack，不帶任何資料
+  socket.on('latency:ping', (_d, cb) => { if (typeof cb === 'function') cb(); });
+
   socket.on('room:create', (d = {}, cb) => {
     const now = Date.now(); // 防濫用：每個連線 10 秒最多建 5 間，全服務最多 300 間
     createBucket = now - createBucket.t > 10000 ? { n: 0, t: now } : createBucket;
