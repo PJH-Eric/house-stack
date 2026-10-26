@@ -15,7 +15,8 @@
     "i18n:check": "node scripts/i18n-check.js",
     "langmenu:check": "node scripts/langmenu-check.js",
     "overlap:check": "node scripts/overlap-check.js",
-    "tap:check": "node scripts/tap-check.js"
+    "tap:check": "node scripts/tap-check.js",
+    "tap:online": "node scripts/online-tap-check.js"
   },
   "engines": {
     "node": ">=18"
