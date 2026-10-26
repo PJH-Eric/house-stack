@@ -240,6 +240,23 @@ async function test(name, fn) {
     const st = rm.start(room, member.id); assert.ok(st.ok, JSON.stringify(st));
     assert.strictEqual(room.game.publicState().shapes, 'every');
   });
+  await test('每回合限時：預設（單人不限、對戰依難度）、可選秒數、亂填被擋；房間設定帶進對局', () => {
+    assert.strictEqual(T.createGame({ mode: 'solo' }).turnSec, 0, '單人預設不限時');
+    assert.strictEqual(T.createGame({ mode: 'versus', difficulty: 'hard' }).turnSec, T.DIFFICULTIES.hard.turnSec, '對戰預設依難度');
+    assert.strictEqual(T.createGame({ mode: 'solo', turnLimit: 10 }).turnSec, 10);
+    assert.strictEqual(T.createGame({ mode: 'versus', turnLimit: 5 }).publicState().turnSec, 5);
+    for (const bad of [-3, NaN, 7, 8, 20, 1e9, '<b>', null]) assert.strictEqual(T.createGame({ mode: 'solo', turnLimit: bad }).turnSec, 0, '非法值回到預設：' + bad);
+    const rm = new RoomManager({ onEvent() {} });
+    const { room, member } = rm.createRoom({ sid: 'h', name: 'Host', turnLimit: 10 });
+    assert.strictEqual(room.settings.turnLimit, 10);
+    assert.strictEqual(rm.createRoom({ sid: 'x', name: 'X', turnLimit: 99 }).room.settings.turnLimit, 0);
+    assert.ok(rm.setSettings(room, member.id, { turnLimit: 15 })); assert.strictEqual(room.settings.turnLimit, 15);
+    rm.setSettings(room, member.id, { turnLimit: 8 }); assert.strictEqual(room.settings.turnLimit, 15, '非法值忽略');
+    const j = rm.join({ sid: 'g', name: 'G', roomId: room.id, token: room.tokens.player, role: 'player' });
+    assert.strictEqual(rm.setSettings(room, j.member.id, { turnLimit: 5 }), false, '非房主不能改');
+    rm.setReady(room, j.member.id, true);
+    assert.ok(rm.start(room, member.id).ok); assert.strictEqual(room.game.turnSec, 15);
+  });
   await test('邀請：token 決定角色；玩家席滿 → 轉觀戰；撤銷後無效', () => {
     const rm = new RoomManager({ onEvent() {} });
     const { room } = rm.createRoom({ sid: 'h', name: 'Host', maxPlayers: 2 });

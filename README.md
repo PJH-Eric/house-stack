@@ -72,6 +72,7 @@ npm start            # http://localhost:3090（或 Windows 雙擊「啟動遊戲
 ```bash
 npm test             # 多語系字典、GA4、SEO 注入、暫停提示日期、規則／AI／房間單元測試（26 項）
 npm run verify       # npm test + 真實伺服器的線上整合檢查（22 項，含亂填資料防護、建房限速、latency:ping）
+npm run timer:check      # 每回合限時：倒數、逾時自動放下、暫停停住（需先 npm start）
 npm run tap:check        # 點螢幕任何位置放下（桌機滑鼠／手機平板觸控），按鈕與彈窗不誤放（需先 npm start）
 npm run tap:online       # 線上對局的點擊：非輪到者／觀戰者不放下、輸入框聚焦時只失焦（需先 npm start）
 npm run langmenu:check   # 語言選單：鍵盤／Esc／返回鍵，對局中不誤觸「放下」（需先 npm start）
@@ -86,6 +87,7 @@ node scripts/online-ui.js   # 3 個瀏覽器（房主／玩家／觀戰）的線
 ## 多語系、GA4、SEO 與其他非遊戲機制（沿用 shoot-balloon 等專案的做法）
 
 - **多語系**：繁體中文（預設）、简体中文、English。語言決定順序 `?lang=` → localStorage（key `game-island-lang`，與遊戲大廳／其他遊戲同源共用）→ 繁中。設定按鈕旁的地球鈕（顯示 繁／简／EN）可切換；首頁、設定、教學、大廳畫面切換後會重新載入以完整套用，對局／房間中不打斷，離開後套用。字典以**繁中原文當 key**：程式裡寫 `t('開始')`、含變數 `t('最高蓋到 {peak} 層', { peak })`；英文在 `locales.js`，簡體由 `python3 scripts/gen-hans.py`（OpenCC）產生，用語不理想寫進該腳本的 `OVERRIDES`。伺服器送出的中文訊息（房間錯誤、系統聊天）由 `net.js` 以 `tm()` 轉成目前語言。新增文字後 `npm test` 會檢查缺漏。
+- **每回合限時**：單人、對電腦、線上房間的設定都有「每回合限時」（預設／5／10／15 秒）。預設＝單人不限時、對戰沿用難度的 turnSec（幼幼班 40／簡單 30／普通 25／困難 20）。時間到由本機（線上由伺服器計時）在吊車目前位置自動放下，可能放偏而倒塌；暫停時倒數停住。選項在 `rules.js` 的 `TURN_LIMITS`／`turnSecFor`，房主可在房間設定修改，非法值一律回到預設。
 - **GA4**：`analytics.js` 只在 `pjh-eric.github.io` 且有 Measurement ID 時載入 Google tag；本機、預覽網址與 `file://` 完全不動作。只送固定維度的事件（`game_start`／`game_end`／`room_create`／`room_join`／`lobby_click`／`page_view` 與模式、難度、形狀、人數、結果、時長、語言），**不送暱稱、房號、種子或邀請 token**，並關閉廣告個人化。Measurement ID 預設為遊戲小小島共用的 ID，可用 repo 變數 `GA_MEASUREMENT_ID` 覆寫；沒有任何秘密放進前端。
 - **SEO**：`seo.config.json` ＋ `scripts/inject-seo.js` 在建置時把 title／description／canonical／Open Graph／Twitter／JSON-LD 與 GA 設定寫進 `dist/index.html`，並產生 `sitemap.xml`（`public/robots.txt` 指向它）；原始碼的 `public/index.html` 不會被改動。封面圖 `assets/images/cover.webp` 與圖示請換成正式美術。
 - **線上延遲徽章**：線上大廳／房間／線上對局時，右上角設定鈕左邊顯示往返延遲（≤30ms 綠、<100ms 黃、其餘紅），每 2.5 秒用 `latency:ping` 量測，離開線上畫面即停止。

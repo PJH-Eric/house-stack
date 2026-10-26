@@ -73,7 +73,7 @@ function beginTurn(room) {
   clearTurnTimer(room);
   const g = room.game;
   const p = g.currentPlayer();
-  const sec = T.DIFFICULTIES[g.difficulty].turnSec;
+  const sec = g.turnSec || T.DIFFICULTIES[g.difficulty].turnSec;
   const no = g.turnNo + 1;
   const t0 = Date.now();
   const swing = g.swingSpec;
@@ -176,7 +176,7 @@ io.on('connection', (socket) => {
     createBucket = now - createBucket.t > 10000 ? { n: 0, t: now } : createBucket;
     if (++createBucket.n > 5) return fail(cb, 'rate', '建立房間太頻繁，請稍後再試');
     if (rm.rooms.size >= MAX_ROOMS) return fail(cb, 'full', '伺服器房間已滿，請稍後再試');
-    const { room, member } = rm.createRoom({ sid, name: d.name, maxPlayers: num(d.maxPlayers, 4), difficulty: d.difficulty, lives: num(d.lives, 0), shapes: d.shapes });
+    const { room, member } = rm.createRoom({ sid, name: d.name, maxPlayers: num(d.maxPlayers, 4), difficulty: d.difficulty, lives: num(d.lives, 0), shapes: d.shapes, turnLimit: num(d.turnLimit, 0) });
     enter(room, member, null, cb);
   });
 

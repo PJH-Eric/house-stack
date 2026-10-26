@@ -140,6 +140,14 @@
     return { fallFrom, maxRatio, ratios };
   }
 
+  /** 每回合限時（秒）：可選值；0 = 預設（單人不限時、對戰依難度的 turnSec）。 */
+  const TURN_LIMITS = [0, 5, 10, 15];
+  function turnSecFor(diffKey, mode, turnLimit) {
+    const n = Math.floor(+turnLimit);
+    if (n > 0 && TURN_LIMITS.includes(n)) return n;
+    return mode === 'versus' ? (DIFFICULTIES[diffKey] || DIFFICULTIES.normal).turnSec : 0;
+  }
+
   function createGame(opts) {
     const diffKey = DIFFICULTIES[opts.difficulty] ? opts.difficulty : 'normal';
     const D = DIFFICULTIES[diffKey];
@@ -154,7 +162,7 @@
     const spaceAt = opts.spaceFloors > 0 ? opts.spaceFloors : SPACE_FLOORS;
 
     const g = {
-      seed, difficulty: diffKey, mode, D,
+      seed, difficulty: diffKey, mode, D, turnSec: turnSecFor(diffKey, mode, opts.turnLimit),
       floors: [], // {x,z,color,variant,seat,perfect}
       players: [],
       current: 0, turnNo: 0, over: false, winnerId: null, summit: false,
@@ -328,7 +336,7 @@
     }));
 
     g.publicState = () => ({
-      seed, difficulty: diffKey, mode, shapes, size: D.size, ground: D.ground, amp: D.amp, tol: D.tol,
+      seed, difficulty: diffKey, mode, shapes, turnSec: g.turnSec, size: D.size, ground: D.ground, amp: D.amp, tol: D.tol,
       floors: g.floors.map(arr8),
       players: g.publicPlayers(), current: g.current, currentId: g.over ? null : g.currentPlayer().id,
       turnNo: g.turnNo, over: g.over, winnerId: g.winnerId, summit: g.summit,
@@ -340,7 +348,7 @@
   }
 
   return {
-    FLOOR_H, SKY_FLOORS, PALETTE_COUNT, VARIANT_COUNT, DIFFICULTIES, mulberry32, createGame,
+    TURN_LIMITS, turnSecFor, FLOOR_H, SKY_FLOORS, PALETTE_COUNT, VARIANT_COUNT, DIFFICULTIES, mulberry32, createGame,
     swingPos, timeToReach, evaluate, axisFor, clamp, windBase, WIND, SPACE_FLOORS, MAG, IRR, shapeFor,
   };
 });

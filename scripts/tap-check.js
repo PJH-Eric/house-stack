@@ -30,7 +30,7 @@ const CFG = { kind: 'local', mode: 'solo', diff: 'easy', players: [{ id: 'me', n
     await p.click('.menu-btn').catch(() => {}); await p.waitForTimeout(300);
     ok(await drops() === before, `${name}：點選單鈕不會放下`);
     await p.keyboard.press('Escape'); await p.waitForTimeout(300);
-    if (!touch) { await ready(); await p.mouse.click(w / 2, h / 2, { button: 'right' }); await p.waitForTimeout(300); ok(await drops() === before, `${name}：右鍵不會放下`); }
+    if (!touch) { await ready(); await p.waitForTimeout(500); const b2 = await drops(); await p.mouse.click(w / 2, h / 2, { button: 'right' }); await p.waitForTimeout(300); ok(await drops() === b2, `${name}：右鍵不會放下`); }
     if (w < 900) { // 窄版：抽屜開著時點外面只收合，不放下
       await ready(); await p.waitForTimeout(500);
       const b0 = await drops();

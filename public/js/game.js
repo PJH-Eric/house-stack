@@ -57,7 +57,7 @@ export function GameScreen(cfg) {
     initFromState(v.game);
   } else {
     S.myId = 'me';
-    g = R.createGame({ seed: (Math.random() * 2 ** 31) >>> 0, difficulty: S.diff, mode: S.mode, lives: cfg.lives || undefined, shapes: cfg.shapes || 'off', players: cfg.players });
+    g = R.createGame({ seed: (Math.random() * 2 ** 31) >>> 0, difficulty: S.diff, mode: S.mode, lives: cfg.lives || undefined, shapes: cfg.shapes || 'off', turnLimit: cfg.turnLimit || 0, players: cfg.players });
     initFromState(g.publicState());
   }
 
@@ -275,7 +275,7 @@ export function GameScreen(cfg) {
     }
     if (!online) {
       S.turnId = res.nextPlayerId;
-      setTimeout(() => beginTurn({ playerId: res.nextPlayerId, swing: res.nextSwing, t0: Date.now(), offset: 0, sec: S.mode === 'versus' ? R.DIFFICULTIES[S.diff].turnSec : 0 }), 350);
+      setTimeout(() => beginTurn({ playerId: res.nextPlayerId, swing: res.nextSwing, t0: Date.now(), offset: 0, sec: g.turnSec || 0 }), 350);
     } else if (S.pending) { const t = S.pending; S.pending = null; beginTurn(t); }
     else { S.turnId = res.nextPlayerId; renderSummary(); }
   }
@@ -364,7 +364,7 @@ export function GameScreen(cfg) {
     else if (S.canAct) { text = t('輪到你了！點一下放下'); color = colorOf(S.myId); }
     else { const p = playerOf(S.turnId); text = `${p ? p.name : ''}${p && p.kind === 'ai' ? t(' 瞄準中…') : t(' 正在操作吊車')}`; color = colorOf(S.turnId); }
     banner.textContent = text; banner.style.setProperty('--accent', color);
-    if (S.mode === 'solo' || S.over || !S.deadline) timerEl.textContent = '';
+    if (S.over || !S.deadline || !S.sec) timerEl.textContent = '';
     else { const left = Math.max(0, Math.ceil((S.deadline - Date.now()) / 1000)); timerEl.textContent = `${left}`; timerEl.classList.toggle('low', left <= 5); }
     heightChip.firstChild.textContent = S.height;
     const me = playerOf(S.myId);
@@ -374,17 +374,16 @@ export function GameScreen(cfg) {
   }
 
   /* ---------- 主迴圈 ---------- */
-  let raf = 0, last = performance.now(), bannerAcc = 0, creakAcc = 0;
+  let raf = 0, bannerLast = 0, last = performance.now(), creakAcc = 0;
   function tick(now) {
     if (destroyed) return;
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const real = (now - last) / 1000, dt = Math.min(0.05, real); last = now;
     board.reduceMotion = reduceMotion(); board.guide = store.get().guide;
-    if (S.paused) { S.deadline += dt * 1000; if (board.turn) board.turn.t0 += dt * 1000; }
+    if (S.paused) { S.deadline += real * 1000; if (board.turn) board.turn.t0 += real * 1000; } // 暫停期間用真實經過時間補回，畫面很慢時倒數也不會偷跑
     board.update(dt); board.render();
-    bannerAcc += dt;
-    if (bannerAcc > 0.2) {
-      bannerAcc = 0; updateBanner();
-      if (!online && S.canAct && S.mode === 'versus' && S.deadline && Date.now() > S.deadline && !S.paused) { S.turnStartPerf = 0; drop(); }
+    if (now - bannerLast > 200) { // 用真實時間（不是被夾住的 dt），畫面很慢時倒數與逾時放下也不會拖延
+      bannerLast = now; updateBanner();
+      if (!online && S.canAct && S.deadline && Date.now() > S.deadline && !S.paused) { S.turnStartPerf = 0; drop(); }
     }
     creakAcc += dt;
     if (creakAcc > 2.4 && S.stability < 0.3 && !S.over) { creakAcc = 0; A.sfx.creak(); }
@@ -400,13 +399,13 @@ export function GameScreen(cfg) {
     mount() {
       ro.observe(canvas); board.resize(); renderSummary(); updateBanner(); syncControls();
       raf = requestAnimationFrame(tick);
-      if (!online) setTimeout(() => { if (!destroyed) beginTurn({ playerId: g.currentPlayer().id, swing: g.swingSpec, t0: Date.now(), offset: 0, sec: S.mode === 'versus' ? R.DIFFICULTIES[S.diff].turnSec : 0 }); }, 700);
+      if (!online) setTimeout(() => { if (!destroyed) beginTurn({ playerId: g.currentPlayer().id, swing: g.swingSpec, t0: Date.now(), offset: 0, sec: g.turnSec || 0 }); }, 700);
       else {
         const v = cfg.view;
         if (v.status === 'ended') { S.over = true; S.winnerId = v.game && v.game.winnerId; setTimeout(showResult, 300); }
         else if (v.turn && v.game && v.game.swing) {
           // 重連／中途加入：吊車相位由快照的 swing 與回合開始時間推回
-          beginTurn({ playerId: v.turn.playerId, swing: v.game.swing, t0: v.turn.t0, offset: v.turn.now ? v.turn.now - Date.now() : 0, deadline: v.turn.deadline, sec: R.DIFFICULTIES[S.diff].turnSec });
+          beginTurn({ playerId: v.turn.playerId, swing: v.game.swing, t0: v.turn.t0, offset: v.turn.now ? v.turn.now - Date.now() : 0, deadline: v.turn.deadline, sec: (v.game && v.game.turnSec) || R.DIFFICULTIES[S.diff].turnSec });
         }
       }
     },
