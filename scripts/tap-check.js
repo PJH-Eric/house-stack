@@ -31,6 +31,14 @@ const CFG = { kind: 'local', mode: 'solo', diff: 'easy', players: [{ id: 'me', n
     ok(await drops() === before, `${name}：點選單鈕不會放下`);
     await p.keyboard.press('Escape'); await p.waitForTimeout(300);
     if (!touch) { await ready(); await p.mouse.click(w / 2, h / 2, { button: 'right' }); await p.waitForTimeout(300); ok(await drops() === before, `${name}：右鍵不會放下`); }
+    if (w < 900) { // 窄版：抽屜開著時點外面只收合，不放下
+      await ready(); await p.waitForTimeout(500);
+      const b0 = await drops();
+      await p.click('.info-btn'); await p.waitForTimeout(700);
+      ok(await p.evaluate(() => document.querySelector('.game').classList.contains('panel-open')), `${name}：資訊欄抽屜已展開`);
+      await act(w - 12, h - 150); await p.waitForTimeout(500);
+      ok(!(await p.evaluate(() => document.querySelector('.game').classList.contains('panel-open'))) && await drops() === b0, `${name}：點抽屜外面只收合、不放下`);
+    }
     if (errs.length) { bad++; console.log('✘ 頁面錯誤 ' + errs.join(';')); }
     await ctx.close();
   }

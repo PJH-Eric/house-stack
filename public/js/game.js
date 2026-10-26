@@ -110,7 +110,7 @@ export function GameScreen(cfg) {
     if (S.role === 'spectator') summaryBox.append(h('div', { class: 'sum-note spec' }, icon('eye', 16), t(' 你是觀戰者，可以聊天但不能操作')));
     summaryBox.append(h('div', { class: 'keys' },
       h('div', null, KeyCap(t('空白')), t(' 放下樓層')), h('div', null, KeyCap('Esc'), t(' 選單')),
-      h('div', { class: 'keys-note' }, t('觸控：點一下畫面或按「放下」。樓層重心要落在下方樓層的重疊範圍內，否則整段會倒！越高風越大：風會把吊車吹偏，樓層落下時也會被吹走，白框是已算入風的預測落點。'))));
+      h('div', { class: 'keys-note' }, t('點一下螢幕任何位置（滑鼠左鍵或觸控）或按「放下」。樓層重心要落在下方樓層的重疊範圍內，否則整段會倒！越高風越大：風會把吊車吹偏，樓層落下時也會被吹走，白框是已算入風的預測落點。'))));
   }
   function syncUnread() { unreadBadge.hidden = !S.unread; unreadBadge.textContent = S.unread > 9 ? '9+' : S.unread; }
 
@@ -178,6 +178,9 @@ export function GameScreen(cfg) {
     if (hasModal() || S.resultShown || S.over) return;
     if (e.target && e.target.closest && e.target.closest(NO_TAP)) return;
     if (!root.isConnected) return;
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) { ae.blur(); return; } // 正在打字：先收起輸入，不放下
+    if (root.classList.contains('panel-open') && !matchMedia('(min-width: 900px)').matches) { togglePanel(false); return; } // 窄版抽屜開著：點外面只收合
     drop();
   }
   window.addEventListener('pointerdown', onScreenPointer);
