@@ -116,7 +116,7 @@ function setup({ mode }) {
   drawAis(); refreshLives(); showRec();
   const body = [
     Field('暱稱', nameTf), dSel, desc, rec, lives, livesHint, shSel, shDesc,
-    solo ? h('p', { class: 'rule-note' }, '單人規則：樓層重心不穩、整段倒塌（或完全沒接到）就失去一顆愛心，愛心用完結束，比誰蓋得高、得分高。連續完美對齊會有連擊加分。') : h('div', null, aiCount, aiBox, h('p', { class: 'rule-note' }, '輪流規則：大家輪流操作吊車，在同一棟樓上加蓋一層。讓樓倒塌的人失去一顆愛心，愛心用完就淘汰，最後留下的人獲勝。樓沒有上限，風越高越大。樓層形狀可在設定裡選。')),
+    solo ? h('p', { class: 'rule-note' }, '單人規則：樓層重心不穩、整段倒塌（或完全沒接到）就失去一顆愛心，愛心用完結束，比誰蓋得高、得分高。連續完美對齊會有連擊加分。') : h('div', null, aiCount, aiBox, h('p', { class: 'rule-note' }, '輪流規則：大家輪流操作吊車，在同一棟樓上加蓋一層。讓樓倒塌的人失去一顆愛心，愛心用完就淘汰，最後留下的人獲勝。樓沒有上限，風越高越大。')),
     start,
   ];
   const page = Page({ title: solo ? '單人挑戰' : '對電腦輪流', back: { fn: () => go('home') }, children: body, narrow: true });

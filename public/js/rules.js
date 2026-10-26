@@ -62,7 +62,7 @@
       if (Math.abs(w - 1) < 0.12 && Math.abs(hh - 1) < 0.1) w += u < 0.5 ? -0.25 : 0.25;
       return { w: r3(clamp(w, 0.55, 1.5)), h: r3(clamp(hh, 0.7, 1.4)) };
     }
-    const ramp = Math.min(1, n / 10); // 每層都不同：從第 1 層起，10 層內逐漸增加到最大幅度
+    const ramp = Math.min(1, 0.45 + n * 0.1); // 每層都不同：第 1 層起就有明顯差異，6 層內增加到最大幅度
     const r = mulberry32((seed ^ Math.imul(n + 5, 2654435769)) >>> 0);
     const u = r(), v = r();
     return { w: r3(clamp(1 + (u * 2 - 1) * S.w * ramp, 0.55, 1.5)), h: r3(clamp(1 + (v * 2 - 1) * S.h * ramp, 0.7, 1.4)) };
