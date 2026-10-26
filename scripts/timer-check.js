@@ -29,6 +29,18 @@ const cfg = (turnLimit) => ({ kind: 'local', mode: 'solo', diff: 'easy', players
   ok(await p.evaluate(() => window.__d) >= 1, '時間到自動放下');
   await p.waitForTimeout(2500);
   ok((await p.evaluate(() => window.__app.app.screen.debug.S.sec)) === 5, '下一回合重新倒數 5 秒');
+  // 對電腦：輪到電腦時不顯示倒數
+  await p.evaluate(() => window.__app.go('game', { kind: 'local', mode: 'versus', diff: 'normal', players: [{ id: 'me', name: 'Eric', kind: 'human' }, { id: 'ai1', name: 'AI', kind: 'ai', ai: 'hard' }], lives: 2, turnLimit: 5, setupMode: 'vs' }));
+  await p.waitForSelector('.game'); await p.waitForTimeout(1500);
+  await p.evaluate(() => { window.__app.app.screen.debug.board.currentD = () => 0; });
+  let sawAi = false, aiTimer = null;
+  for (let i = 0; i < 40 && !sawAi; i++) {
+    const s = await p.evaluate(() => { const d = window.__app.app.screen.debug; const pl = d.S.players.find((x) => x.id === d.S.turnId); return { ai: !!pl && pl.kind === 'ai', can: d.S.canAct && !d.board.busy, t: document.querySelector('.turn-timer').textContent }; });
+    if (s.can) { await p.waitForTimeout(500); await p.keyboard.press('Space'); }
+    if (s.ai) { sawAi = true; aiTimer = s.t; }
+    await p.waitForTimeout(600);
+  }
+  ok(sawAi && aiTimer === '', `輪到電腦時不顯示倒數（${aiTimer === '' ? '空' : aiTimer}）`);
   if (errs.length) { bad++; console.log('✘ 頁面錯誤 ' + errs.join(';')); }
   await b.close();
   console.log(bad ? `\n限時機制：${bad} 個問題` : '\n限時機制：全部通過'); process.exitCode = bad ? 1 : 0;

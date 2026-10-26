@@ -364,7 +364,7 @@ export function GameScreen(cfg) {
     else if (S.canAct) { text = t('輪到你了！點一下放下'); color = colorOf(S.myId); }
     else { const p = playerOf(S.turnId); text = `${p ? p.name : ''}${p && p.kind === 'ai' ? t(' 瞄準中…') : t(' 正在操作吊車')}`; color = colorOf(S.turnId); }
     banner.textContent = text; banner.style.setProperty('--accent', color);
-    if (S.over || !S.deadline || !S.sec) timerEl.textContent = '';
+    if (S.over || !S.deadline || !S.sec || (playerOf(S.turnId) || {}).kind === 'ai') timerEl.textContent = ''; // 電腦的回合不倒數（它不受限時約束）
     else { const left = Math.max(0, Math.ceil((S.deadline - Date.now()) / 1000)); timerEl.textContent = `${left}`; timerEl.classList.toggle('low', left <= 5); }
     heightChip.firstChild.textContent = S.height;
     const me = playerOf(S.myId);
