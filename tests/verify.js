@@ -11,7 +11,7 @@ async function test(name, fn) {
 
 (async () => {
   console.log('規則核心');
-  const mk = (o = {}) => T.createGame({ seed: 11, difficulty: 'normal', mode: 'solo', wind: false, ...o });
+  const mk = (o = {}) => T.createGame({ seed: 11, difficulty: 'normal', mode: 'solo', wind: false, irregular: false, ...o });
   await test('決定性：同種子、同操作 → 完全相同結果', () => {
     const run = () => { const g = mk(); const out = []; for (const d of [0, 0.5, -1.2, 0.1, 2.2, 0]) { const r = g.drop({ d }); out.push(r && [r.placed.x, r.placed.z, r.toppled, r.fallFrom]); } return JSON.stringify([out, g.publicState().floors]); };
     assert.strictEqual(run(), run());
@@ -114,8 +114,53 @@ async function test(name, fn) {
   await test('快照：publicState 可重建同樣的塔', () => {
     const g = mk(); g.drop({ d: 0 }); g.drop({ d: 0.9 });
     const st = g.publicState(); assert.strictEqual(st.floors.length, g.height());
-    const ev = T.evaluate(st.floors.map((f) => ({ x: f[0], z: f[1] })), st.size, st.ground);
+    const ev = T.evaluate(st.floors.map((f) => ({ x: f[0], z: f[1], w: f[6], h: f[7] })), st.size, st.ground);
     assert.strictEqual(ev.fallFrom, -1);
+  });
+
+  await test('不規則樓層：第 5 層前標準尺寸；之後寬高有變化、範圍受限、決定性；可關閉', () => {
+    for (let n = 0; n < 5; n++) assert.deepStrictEqual(T.shapeFor(9, 'normal', n), { w: 1, h: 1 });
+    let varied = 0;
+    for (let n = 5; n < 120; n++) { const a = T.shapeFor(9, 'hard', n), b = T.shapeFor(9, 'hard', n); assert.deepStrictEqual(a, b); assert.ok(a.w >= 0.55 && a.w <= 1.5 && a.h >= 0.7 && a.h <= 1.4); if (a.w !== 1 || a.h !== 1) varied++; }
+    assert.ok(varied > 100, '大多數樓層外形不同');
+    const g = T.createGame({ seed: 3, difficulty: 'normal', irregular: true });
+    for (let i = 0; i < 40; i++) g.drop({ d: -g.swingSpec.drift });
+    assert.ok(g.floors.some((f) => f.w !== 1) && g.floors.some((f) => f.h !== 1), '外形進入資料');
+    const st = g.publicState(); assert.strictEqual(st.floors[st.floors.length - 1].length, 8);
+    const off = T.createGame({ seed: 3, difficulty: 'normal' }); // 預設關閉
+    for (let i = 0; i < 40; i++) off.drop({ d: 0 });
+    assert.ok(off.floors.every((f) => f.w === 1 && f.h === 1));
+  });
+  await test('重心判定（不規則）：窄樓層接合面較小，較寬的頂層較容易站穩；沒重疊就沒接到', () => {
+    const E = (arr) => T.evaluate(arr, 4, 7);
+    const base = [{ x: 0, z: 0 }, { x: 0, z: 0, w: 0.6 }]; // 窄層坐在標準層上，置中穩定
+    assert.strictEqual(E(base.concat([{ x: 0, z: 0 }])).fallFrom, -1);
+    // 支撐的樓層越窄，同樣偏移的上層越不穩
+    const wide = E([{ x: 0, z: 0 }, { x: 0, z: 0, w: 1.4 }, { x: 1, z: 0 }]), narrow = E([{ x: 0, z: 0 }, { x: 0, z: 0, w: 0.6 }, { x: 1, z: 0 }]);
+    assert.ok(narrow.maxRatio > wide.maxRatio, '窄的支撐更不穩');
+    assert.strictEqual(E([{ x: 0, z: 0 }, { x: 0, z: 0 }, { x: 3.2, z: 0, w: 0.5 }]).missed, true, '沒重疊 = 沒接到');
+    // 質量：厚（h 大）的上層把重心拉向自己
+    const heavy = E([{ x: 0, z: 0 }, { x: 0, z: 0 }, { x: 1.7, z: 0, h: 1.4 }]).ratios[2], light = E([{ x: 0, z: 0 }, { x: 0, z: 0 }, { x: 1.7, z: 0, h: 0.7 }]).ratios[2];
+    assert.ok(Math.abs(heavy - light) < 1e-9, '單層頂端的重心比例與質量無關');
+  });
+  await test('太空無重力：140 層以上無風、有磁吸；磁吸讓偏移縮小並更容易完美', () => {
+    const g = T.createGame({ seed: 4, difficulty: 'normal', irregular: false, wind: true, spaceFloors: 8 });
+    assert.strictEqual(g.swingSpec.space, false); assert.strictEqual(g.swingSpec.mag, 0);
+    for (let i = 0; i < 7; i++) g.drop({ d: 0 });
+    const sw = g.swingSpec; assert.strictEqual(sw.space, true); assert.strictEqual(sw.mag, T.MAG.normal);
+    assert.strictEqual(sw.wind, 0, '太空無風');
+    const r = g.drop({ d: 1.0 });
+    assert.ok(Math.abs(r.off - 1.0 * (1 - T.MAG.normal)) < 1e-9, '偏移被吸向中心 40%');
+    const g2 = T.createGame({ seed: 4, difficulty: 'normal', irregular: false, wind: false, spaceFloors: 8 });
+    for (let i = 0; i < 7; i++) g2.drop({ d: 0 });
+    assert.ok(g2.drop({ d: 0.4 }).perfect, '0.4 × 0.6 = 0.24 ≤ 容許 0.27 → 完美');
+    assert.strictEqual(T.SPACE_FLOORS, 140);
+  });
+  await test('電腦在太空與不規則樓層下仍能正常蓋樓（困難：50 層內不會全倒）', () => {
+    const g = T.createGame({ seed: 8, difficulty: 'normal', lives: 9, irregular: true, spaceFloors: 30 });
+    const rng = T.mulberry32(5); let n = 0;
+    while (!g.over && n < 60) { const m = AI.chooseMove(g, 'hard', rng, { tNow: 0 }); g.drop({ d: m.d }); n++; }
+    assert.ok(g.peak >= 25, '最高 ' + g.peak);
   });
 
   console.log('電腦對手');

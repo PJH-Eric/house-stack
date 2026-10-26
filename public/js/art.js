@@ -12,7 +12,6 @@ import { SkyDirector } from './sky.js';
 const R = window.HouseRules;
 const FH = R.FLOOR_H;
 export const PLAYER_COLORS = ['#ff5a5f', '#2f9bff', '#ffb81c', '#2fc48d'];
-export const WALL = ['#2fa3dc', '#27b3c8', '#4a90e2', '#5cc0e0', '#3b82c4', '#35b8b0', '#6aa8ee', '#2a9fd0']; // 參考圖：藍／青色大樓
 const PASTEL = ['#ff9b7a', '#ffd35c', '#7fd0f5', '#9ddc9f', '#f6a0c2', '#c9a5ef', '#ffbf75', '#a9c4d6'];
 const GAP = 4.0; // 吊著的樓層底部離塔頂的距離
 const ROOF = ['#e0533d', '#c9462f', '#4f7fd6', '#2e9d6a'];
@@ -46,10 +45,16 @@ function wallTexture(hex) {
   texCache.set(key, t); return t;
 }
 
-/* 依高度換色：每 5 層換一個色系（可愛不單調），同色系內再微調明暗 */
-const BAND = ['#2fa3dc', '#27b3a8', '#6bbf59', '#f2b632', '#ef7b5a', '#c46fd8', '#5b7be0', '#e86b9a'];
-const ACCENT = ['#ff6b4a', '#ffd23c', '#ffffff', '#2f6fd8'];
-export function wallColorFor(idx) { return idx <= 0 ? '#d98c5a' : BAND[Math.floor((idx - 1) / 5) % BAND.length]; }
+/* 依高度換色：色相隨樓層平滑漸變（約 42 層轉一圈），明度與飽和度再輕微起伏；每層另有 12 色點綴（遮陽棚、陽台、花）。 */
+const ACCENT = ['#ff6b4a', '#ffd23c', '#ffffff', '#2f6fd8', '#ff5fa2', '#35c9a0', '#9b6bff', '#ff9a2e', '#27c3e6', '#7ed957', '#f25c7a', '#3a4a8c'];
+const BASE_HEX = '#d98c5a';
+const q = (v, step) => Math.round(v / step) * step;
+export function wallStyle(idx) {
+  if (idx <= 0) return { key: 'base', color: new THREE.Color(BASE_HEX) };
+  const hue = q((200 + idx * 8.5) % 360, 3), l = q(0.5 + 0.05 * Math.sin(idx * 0.9), 0.02), sat = q(0.62 + 0.1 * Math.sin(idx * 0.37 + 1), 0.02);
+  return { key: `h${hue}-${l.toFixed(2)}-${sat.toFixed(2)}`, color: new THREE.Color().setHSL(hue / 360, sat, l) };
+}
+export function wallColorFor(idx) { return '#' + wallStyle(idx).color.getHexString(); }
 
 /* 手動合併盒子成單一幾何（頂點色），讓一層樓只需 3 個 draw call */
 function mergeBoxes(list) {
@@ -330,22 +335,23 @@ export class Board {
     this.makeRoof();
   }
 
-  makeFloor(color, variant, seat, base, idx = 1) {
-    const grp = new THREE.Group();
-    const hex = wallColorFor(base ? 0 : idx);
+  makeFloor(color, variant, seat, base, idx = 1, w = 1, h = 1) {
+    const outer = new THREE.Group(); // outer 供動畫縮放；grp 依寬／高倍率變形（不規則樓層）
+    const grp = new THREE.Group(); grp.scale.set(w, h, 1); outer.add(grp);
+    const st = wallStyle(base ? 0 : idx);
     const tone = [0.92, 1, 0.96][color % 3];
-    const mk = `${hex}-${tone}`;
+    const mk = `${st.key}-${tone}`;
     this._wallMats = this._wallMats || new Map();
     let side = this._wallMats.get(mk);
-    if (!side) { side = new THREE.MeshLambertMaterial({ map: wallTexture(hex), color: new THREE.Color(tone, tone, tone) }); this._wallMats.set(mk, side); }
+    if (!side) { side = new THREE.MeshLambertMaterial({ map: wallTexture('#ffffff'), color: st.color.clone().multiplyScalar(tone) }); this._wallMats.set(mk, side); }
     const plain = this._plainMat || (this._plainMat = new THREE.MeshLambertMaterial({ color: 0xe9dfae }));
     const body = new THREE.Mesh(this._geoCache.body, [side, side, plain, plain, side, side]);
     body.position.y = -FH * 0.07; body.castShadow = true; body.receiveShadow = true; grp.add(body);
     // 3D 細節（依樣式／配色快取，所有同款樓層共用同一份幾何）
-    const dk = `${variant}-${color % 4}-${base ? 1 : 0}`;
+    const dk = `${variant}-${color % ACCENT.length}-${base ? 1 : 0}`;
     this._detailGeo = this._detailGeo || new Map();
     let dg = this._detailGeo.get(dk);
-    if (!dg) { dg = buildDetail(this.cfg.size, FH, variant, color % 4, base); this._detailGeo.set(dk, dg); }
+    if (!dg) { dg = buildDetail(this.cfg.size, FH, variant, color % ACCENT.length, base); this._detailGeo.set(dk, dg); }
     const det = new THREE.Mesh(dg, detailMat); det.castShadow = true; det.receiveShadow = true; grp.add(det);
     // 奶油色頂板（沒有屋頂，樓層可以一直往上疊）
     const cor = new THREE.Mesh(this._geoCache.cornice, this._cornMat || (this._cornMat = new THREE.MeshLambertMaterial({ color: 0xf6efd0 })));
@@ -356,7 +362,7 @@ export class Board {
     }
     const hatch = new THREE.Mesh(this._geoCache.hatch, this._hatchMat || (this._hatchMat = new THREE.MeshLambertMaterial({ color: 0x6b6f77 })));
     hatch.position.set(this.cfg.size * 0.12, FH * 0.5 + FH * 0.005, -this.cfg.size * 0.05); grp.add(hatch);
-    return grp;
+    return outer;
   }
 
   makeRoof() { this.roof = null; } // 參考作品沒有屋頂；保留空函式讓舊呼叫安全
@@ -373,24 +379,27 @@ export class Board {
   /** 以伺服器/規則快照重建整座塔：[x,z,color,variant,seat,perfect] */
   setFloors(arr) {
     this.clearTower();
-    arr.forEach((f, i) => this.addEntry({ x: f[0], z: f[1], color: f[2], variant: f[3], seat: f[4], base: i === 0 }, i));
+    arr.forEach((f, i) => this.addEntry({ x: f[0], z: f[1], color: f[2], variant: f[3], seat: f[4], w: f[6] || 1, h: f[7] || 1, base: i === 0 }, i));
     this.afterTowerChange(true);
   }
   addEntry(f, i) {
-    const group = this.makeFloor(f.color, f.variant, f.seat, i === 0, i);
-    group.position.set(f.x, FH * (i + 0.5), f.z);
+    const group = this.makeFloor(f.color, f.variant, f.seat, i === 0, i, f.w || 1, f.h || 1);
+    const y0 = this.entries.length ? this.topY() : 0, ht = FH * (f.h || 1);
+    group.position.set(f.x, y0 + ht / 2, f.z);
     this.scene.add(group);
-    const e = { group, x: f.x, z: f.z, i, data: f };
+    const e = { group, x: f.x, z: f.z, i, data: f, y0, ht };
     this.entries.push(e);
     return e;
   }
+  /** 塔頂高度（各層高度不同，所以是累加值） */
+  topY() { const e = this.entries[this.entries.length - 1]; return e ? e.y0 + e.ht : 0; }
   afterTowerChange(snap) {
     const n = this.entries.length;
-    this.altitude = n * FH;
+    this.altitude = this.topY();
     const top = this.entries[n - 1];
     if (this.roof) { this.roof.visible = true; this.roof.position.set(top.x, n * FH, top.z); this.roof.rotation.set(0, 0, 0); this.roof.scale.set(1, 1, 1); }
     // 鏡頭與光源跟著塔頂
-    const topY = n * FH;
+    const topY = this.altitude;
     this.camYTarget = Math.max(topY + 1.5, 9.5);
     if (snap) this.camY = this.camYTarget;
     this.sun.target.position.set(0, Math.max(0, topY - 18), 0);
@@ -399,7 +408,7 @@ export class Board {
     this.craneLayout();
   }
 
-  craneLayout() { this.anchorY = this.entries.length * FH + 30; }
+  craneLayout() { this.anchorY = this.topY() + 30; }
 
   /* ----- 回合：吊車與手上的樓層 ----- */
   /** swing：規則的吊車參數；t0：伺服器開始時間；offset：伺服器時鐘 − 本機時鐘 */
@@ -409,7 +418,8 @@ export class Board {
     if (t) {
       this.sky.setWind(t.swing.wind || 0);
       if (this.heldFloor) this.holdSlot.remove(this.heldFloor);
-      this.heldFloor = this.makeFloor(t.swing.look.color, t.swing.look.variant, t.seat, false, this.entries.length);
+      this.zeroG = !!t.swing.space; this.holdH = t.swing.look.h || 1;
+      this.heldFloor = this.makeFloor(t.swing.look.color, t.swing.look.variant, t.seat, false, this.entries.length, t.swing.look.w || 1, t.swing.look.h || 1);
       this.holdSlot.add(this.heldFloor);
       this.holdPop = 0;
       this.holdSeat = t.seat;
@@ -429,7 +439,7 @@ export class Board {
   holdPos() {
     const n = this.entries.length, top = this.entries[n - 1];
     const axis = this.turn ? this.turn.swing.axis : 'x';
-    const y = n * FH + GAP + FH * 0.5;
+    const y = this.topY() + GAP + FH * (this.holdH || 1) * 0.5;
     return { x: top.x + (axis === 'x' ? this.trolleyD : 0), z: top.z + (axis === 'z' ? this.trolleyD : 0), y };
   }
 
@@ -441,19 +451,20 @@ export class Board {
     const n = this.entries.length;
     const placed = res.placed;
     const axis = res.axis;
-    this.anim = { type: 'align', t: 0, res, cb, n, from: this.trolleyD, to: res.d, floorsBefore: this.entries.map((e) => ({ x: e.x, z: e.z })) };
+    this.anim = { type: 'align', t: 0, res, cb, n, from: this.trolleyD, to: res.d, floorsBefore: this.entries.map((e) => ({ x: e.x, z: e.z, w: (e.data && e.data.w) || 1 })) };
+    this.holdH = placed.h || 1; this.zeroG = !!(res.swing && res.swing.space);
     this.turnBackup = this.turn;
     this.turn = null; // 吊車停止擺盪，改為手動
     this.hold.vis = true;
     if (this.roof) this.roof.visible = false;
     this.dropFloor = this.heldFloor; this.heldFloor = null;
-    if (!this.dropFloor) this.dropFloor = this.makeFloor(placed.color, placed.variant, placed.seat, false, n);
+    if (!this.dropFloor) this.dropFloor = this.makeFloor(placed.color, placed.variant, placed.seat, false, n, placed.w || 1, placed.h || 1);
     this.holdSlot.remove(this.dropFloor); this.dropFloor.rotation.set(0, 0, 0);
     this.dropAxis = axis;
     // 重新依結果上色（保險：旋轉視角或重連時 look 可能不同）
     const pos = (d) => ({ x: this.entries[n - 1].x + (axis === 'x' ? d : 0), z: this.entries[n - 1].z + (axis === 'z' ? d : 0) });
     this.anim.posAt = pos;
-    const p0 = pos(this.trolleyD); this.dropFloor.position.set(p0.x, n * FH + GAP + FH * 0.5, p0.z);
+    const p0 = pos(this.trolleyD); this.dropFloor.position.set(p0.x, this.topY() + GAP + FH * this.holdH * 0.5, p0.z);
     this.scene.add(this.dropFloor);
   }
 
@@ -516,19 +527,19 @@ export class Board {
     let cx, cz, hx, hz;
     if (j === 0) { cx = 0; cz = 0; hx = this.cfg.ground; hz = this.cfg.ground; }
     else {
-      const a = all[j], b = all[j - 1], h = this.cfg.size / 2;
-      const loX = Math.max(a.x, b.x) - h, hiX = Math.min(a.x, b.x) + h, loZ = Math.max(a.z, b.z) - h, hiZ = Math.min(a.z, b.z) + h;
+      const a = all[j], b = all[j - 1], h = this.cfg.size / 2, ha = h * (a.w || 1), hb = h * (b.w || 1);
+      const loX = Math.max(a.x - ha, b.x - hb), hiX = Math.min(a.x + ha, b.x + hb), loZ = Math.max(a.z, b.z) - h, hiZ = Math.min(a.z, b.z) + h;
       cx = (loX + hiX) / 2; cz = (loZ + hiZ) / 2; hx = Math.max(0.05, (hiX - loX) / 2); hz = Math.max(0.05, (hiZ - loZ) / 2);
     }
     let ux = res.pivot ? res.pivot.dx : 1, uz = res.pivot ? res.pivot.dz : 0;
     const L = Math.hypot(ux, uz) || 1; ux /= L; uz /= L;
     const tx = Math.abs(ux) < 1e-6 ? Infinity : hx / Math.abs(ux), tz = Math.abs(uz) < 1e-6 ? Infinity : hz / Math.abs(uz);
     const t = Math.min(tx, tz);
-    const px = cx + ux * t, pz = cz + uz * t, py = j * FH;
+    const px = cx + ux * t, pz = cz + uz * t, py = entries[0] ? entries[0].y0 : 0;
     const pivot = new THREE.Group(); pivot.position.set(px, py, pz); this.scene.add(pivot);
     for (const e of entries) pivot.attach(e.group);
     if (this.roof && j <= this.entries.length + entries.length) pivot.attach(this.roof);
-    this.anim = { ...this.anim, type: 'tip', t: 0, pivot, entries, u: { x: ux, z: uz }, theta: 0, omega: 0.25, axis: new THREE.Vector3(uz, 0, -ux) };
+    this.anim = { ...this.anim, type: 'tip', t: 0, pivot, entries, zg: !!this.zeroG, u: { x: ux, z: uz }, theta: 0, omega: 0.25, axis: new THREE.Vector3(uz, 0, -ux) };
   }
 
   /* ----- 每幀更新 ----- */
@@ -550,12 +561,12 @@ export class Board {
     } else if (a && a.type === 'align') {
       a.t += dt; const k = smooth(clamp(a.t / 0.14, 0, 1));
       this.trolleyD = lerp(a.from, a.to, k);
-      const p = a.posAt(this.trolleyD); this.dropFloor.position.set(p.x, n * FH + GAP + FH * 0.5, p.z);
+      const p = a.posAt(this.trolleyD); this.dropFloor.position.set(p.x, this.topY() + GAP + FH * this.holdH * 0.5, p.z);
       if (k >= 1) { a.type = 'fall'; a.t = 0; a.vy = 0; a.y = this.dropFloor.position.y; a.y0 = a.y; a.px = p.x; a.pz = p.z; if (a.cb.onRelease) a.cb.onRelease(); }
     }
     // 繩子：從畫面上方的錨點垂到樓層頂的掛鉤
     const hp = this.holdPos();
-    this.anchorY = n * FH + 30;
+    this.anchorY = this.topY() + 30;
     const hookPos = new THREE.Vector3(hp.x, hp.y + FH * 0.5 + 0.5, hp.z);
     const anchor = new THREE.Vector3(top.x, this.anchorY, top.z);
     const dir = anchor.clone().sub(hookPos); const len = dir.length();
@@ -569,14 +580,17 @@ export class Board {
       this.holdSlot.position.set(hp.x, hp.y - (1 - smooth(this.holdPop)) * 6, hp.z);
       this.holdSlot.rotation.set(-tiltZ, 0, tilt);
       this.heldFloor.scale.setScalar(0.4 + 0.6 * smooth(this.holdPop));
+      if (this.zeroG && !rm) { this.heldFloor.rotation.y = 0.35 * Math.sin(this.time * 0.7); this.heldFloor.rotation.x = 0.1 * Math.sin(this.time * 0.5 + 1); } else this.heldFloor.rotation.set(0, 0, 0); // 無重力：手上的樓層緩緩漂浮轉動
     }
     // 輔助線
     const showGuide = this.guide && this.turn && this.turn.active && !a;
     this.guideGroup.visible = !!showGuide;
     if (showGuide) {
-      const topY = n * FH + 0.06;
-      const drift = (this.turn.swing && this.turn.swing.drift) || 0, eff = this.trolleyD + drift;
+      const topY = this.topY() + 0.06;
+      const sw = this.turn.swing || {}, drift = sw.drift || 0, eff = (this.trolleyD + drift) * (1 - (sw.mag || 0)); // 風與太空磁吸都算進預測落點
       const perfect = Math.abs(eff) <= this.cfg.tol;
+      const fw = this.cfg.size * ((sw.look && sw.look.w) || 1), gb = this.guideBars; // 輔助框跟著這層樓的寬度
+      gb[0].scale.x = fw; gb[1].scale.x = fw; gb[2].position.x = fw / 2; gb[3].position.x = -fw / 2;
       this.guideGroup.position.set(top.x + (perfect ? 0 : eff), topY, hp.z); // 預測落點：已算入風的吹移
       this.guideMat.color.set(perfect ? 0x35e08a : 0xffffff);
       this.guideBeam.scale.y = 5.2; this.guideBeam.position.y = 2.6; this.guideBeam.visible = false;
@@ -593,14 +607,15 @@ export class Board {
 
     // 搖晃：高度越高、重心越偏越明顯
     const N = Math.max(1, this.entries.length);
-    const baseAmp = (0.012 + 0.2 * this.sway * this.sway + 0.03 * Math.abs(this.sky.windS || 0)) * Math.min(N, 40) / 10 * (rm ? 0.3 : 1);
+    const zg = this.zeroG && this.entries.length >= R.SPACE_FLOORS, fq = zg ? 0.5 : 1;
+    const baseAmp = (0.012 + 0.2 * this.sway * this.sway + 0.03 * Math.abs(this.sky.windS || 0)) * Math.min(N, 40) / 10 * (rm ? 0.3 : 1) * (zg ? 1.7 : 1);
     const amp = baseAmp + this.jolt;
     this.jolt = Math.max(0, this.jolt - dt * 0.35);
     if (!(a && a.type === 'tip')) {
       for (const e of this.entries) {
         const k = Math.pow((e.i + 1) / N, 1.6);
-        e.group.position.x = e.x + amp * k * Math.sin(this.time * 2.3 + e.i * 0.08);
-        e.group.position.z = e.z + amp * k * Math.sin(this.time * 1.9 + 1.1 + e.i * 0.06);
+        e.group.position.x = e.x + amp * k * Math.sin(this.time * 2.3 * fq + e.i * 0.08);
+        e.group.position.z = e.z + amp * k * Math.sin(this.time * 1.9 * fq + 1.1 + e.i * 0.06);
       }
       if (this.roof && this.entries.length && this.roof.visible && !(a && a.type === 'tip')) {
         const t = this.entries[this.entries.length - 1];
@@ -640,8 +655,8 @@ export class Board {
 
   stepFall(dt) {
     const a = this.anim, f = this.dropFloor, n = a.n, res = a.res;
-    a.vy -= 38 * dt; a.y += a.vy * dt;
-    const landY = n * FH + FH * 0.5;
+    a.vy -= (this.zeroG ? 9 : 38) * dt; if (this.zeroG) a.vy = Math.max(a.vy, -6); a.y += a.vy * dt; // 無重力：緩緩漂下
+    const landY = this.topY() + FH * (res.placed.h || 1) * 0.5;
     if (res.missed) { // 完全沒接到：偏離塔身往下掉
       f.position.x += (res.drift || 0) * dt * 1.4; f.position.y = a.y; a.sx = (a.sx || 0) + dt * 1.2; f.rotation.z += dt * 3.2 * (a.pz < 0 ? 1 : -1); f.rotation.x += dt * 2.1;
       const top = this.entries[n - 1]; const dirx = res.axis === 'x' ? Math.sign(res.d || 1) : 0, dirz = res.axis === 'z' ? Math.sign(res.d || 1) : 0;
@@ -658,18 +673,19 @@ export class Board {
       // 落地
       const p = res.placed;
       this.dropFloor = null;
-      f.position.set(p.x, FH * (n + 0.5), p.z); f.rotation.set(0, 0, 0); f.scale.setScalar(1);
-      const e = { group: f, x: p.x, z: p.z, i: n, data: p };
+      const y0 = this.topY(), ht = FH * (p.h || 1);
+      f.position.set(p.x, y0 + ht / 2, p.z); f.rotation.set(0, 0, 0); f.scale.setScalar(1);
+      const e = { group: f, x: p.x, z: p.z, i: n, data: p, y0, ht };
       this.entries.push(e);
-      this.altitude = this.entries.length * FH;
+      this.altitude = this.topY();
       const strength = clamp(0.5 + Math.abs(res.off) * 0.15, 0.4, 1);
       this.shake = res.toppled ? 0.7 : (res.perfect ? 0.18 : 0.35);
       this.jolt += res.toppled ? 0.35 : (res.perfect ? 0.04 : 0.12 + Math.abs(res.off) * 0.05);
-      this.spawnDust(p.x, n * FH + 0.1, p.z, res.perfect ? 4 : 9, this.cfg.size * 0.45);
+      this.spawnDust(p.x, y0 + 0.1, p.z, res.perfect ? 4 : 9, this.cfg.size * 0.45);
       a.cb.onImpact && a.cb.onImpact(strength);
       if (res.perfect) { this.spawnStars(p.x, this.altitude - FH * 0.3, p.z); this.burstConfetti(p.x, this.altitude + 0.5, p.z, 10); a.cb.onPerfect && a.cb.onPerfect({ x: p.x, y: this.altitude + 0.6, z: p.z }); }
       this.afterTowerChange(false);
-      if (res.toppled) res.floorsAfter = a.floorsBefore.concat([{ x: p.x, z: p.z }]);
+      if (res.toppled) res.floorsAfter = a.floorsBefore.concat([{ x: p.x, z: p.z, w: p.w || 1 }]);
       a.type = 'settle'; a.t = 0; a.topple = !!res.toppled; a.entry = e;
       return;
     }
@@ -692,10 +708,10 @@ export class Board {
 
   stepTip(dt) {
     const a = this.anim; a.t += dt;
-    a.omega += (6.2 * Math.sin(a.theta + 0.05) + 1.2) * dt; a.theta += a.omega * dt;
+    a.omega += (6.2 * Math.sin(a.theta + 0.05) + 1.2) * (a.zg ? 0.32 : 1) * dt; a.theta += a.omega * dt;
     a.pivot.quaternion.setFromAxisAngle(a.axis, a.theta);
     if (a.t === dt) this.cbCreak && this.cbCreak();
-    if (a.theta > 0.85 || a.t > 2) {
+    if (a.theta > 0.85 || a.t > (a.zg ? 3.2 : 2)) {
       // 分離成殘骸
       const u = a.u;
       const parts = [...a.entries, ...(this.roof ? [{ group: this.roof, roof: true }] : [])];
@@ -703,13 +719,14 @@ export class Board {
         this.scene.attach(e.group);
         const vel = new THREE.Vector3(u.x * rand(2.5, 5) + rand(-1, 1), rand(0.5, 2.5), u.z * rand(2.5, 5) + rand(-1, 1));
         const spin = new THREE.Vector3(rand(-2.5, 2.5), rand(-2, 2), rand(-2.5, 2.5));
-        this.debris.push({ group: e.group, vel, spin, age: 0, resting: false, fade: 1.6 + idx * 0.04, roof: !!e.roof });
+        if (a.zg) { vel.multiplyScalar(0.35); spin.multiplyScalar(0.5); } // 無重力：殘骸慢慢飄散
+        this.debris.push({ group: e.group, vel, spin, age: 0, resting: false, zg: !!a.zg, fade: (1.6 + idx * 0.04) * (a.zg ? 2.2 : 1), roof: !!e.roof });
       });
       this.scene.remove(a.pivot);
       a.cb.onFall && a.cb.onFall();
       this.anim = { ...a, type: 'wait', t: 0, dur: 1.9, pivot: null, entries: null };
       this.roof = null; this.makeRoof();
-      if (!this.entries.length) { const rem = a.res.remaining; rem.forEach((f, i) => this.addEntry({ x: f[0], z: f[1], color: f[2], variant: f[3], seat: f[4] }, i)); }
+      if (!this.entries.length) { const rem = a.res.remaining; rem.forEach((f, i) => this.addEntry({ x: f[0], z: f[1], color: f[2], variant: f[3], seat: f[4], w: f[6] || 1, h: f[7] || 1 }, i)); }
       this.afterTowerChange(false);
       this.shake = 0.6;
     }
@@ -719,10 +736,10 @@ export class Board {
     for (let i = this.debris.length - 1; i >= 0; i--) {
       const d = this.debris[i]; d.age += dt;
       if (!d.resting) {
-        d.vel.y -= 30 * dt; d.group.position.addScaledVector(d.vel, dt);
+        if (!d.zg) d.vel.y -= 30 * dt; d.group.position.addScaledVector(d.vel, dt);
         d.group.rotation.x += d.spin.x * dt; d.group.rotation.y += d.spin.y * dt; d.group.rotation.z += d.spin.z * dt;
         const floor = d.roof ? 0.3 : FH * 0.45;
-        if (d.group.position.y < floor) {
+        if (!d.zg && d.group.position.y < floor) {
           d.group.position.y = floor; if (Math.abs(d.vel.y) > 3) this.spawnDust(d.group.position.x, 0.3, d.group.position.z, 3, 0.8);
           d.vel.y *= -0.28; d.vel.x *= 0.6; d.vel.z *= 0.6; d.spin.multiplyScalar(0.5);
           if (Math.abs(d.vel.y) < 1) { d.vel.set(0, 0, 0); d.resting = true; }

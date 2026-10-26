@@ -129,9 +129,11 @@ export function GameScreen(cfg) {
   windChip.append(windArrow, windTxt, windBars);
   function setWindUI(sw) {
     const w = (sw && sw.wind) || 0, lvl = Math.min(5, Math.round(Math.abs(w) * 5));
-    windChip.classList.toggle('calm', lvl === 0); windArrow.style.transform = w < 0 ? 'scaleX(-1)' : '';
-    windTxt.textContent = lvl === 0 ? '無風' : `風 ${lvl} 級`;
+    const space = !!(sw && sw.space);
+    windChip.classList.toggle('calm', lvl === 0 && !space); windChip.classList.toggle('space', space); windArrow.style.transform = w < 0 ? 'scaleX(-1)' : '';
+    windTxt.textContent = space ? '無重力・磁吸' : lvl === 0 ? '無風' : `風 ${lvl} 級`;
     [...windBars.children].forEach((b, i) => b.classList.toggle('on', i < lvl));
+    if (space) { windChip.setAttribute('aria-label', '太空無重力：樓層會被磁力吸向中心，下落與搖晃都變慢'); return; }
     windChip.setAttribute('aria-label', lvl === 0 ? '目前無風' : `${w > 0 ? '向右' : '向左'}吹，風力 ${lvl} 級（最大 5 級）`);
   }
   const topbar = h('div', { class: 'topbar' }, h('div', { class: 'tb-left' }, infoBtn, menuBtn), h('div', { class: 'tb-center' }, banner, timerEl), h('div', { class: 'tb-right' }, starIco, stabMini));

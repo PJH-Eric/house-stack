@@ -4,7 +4,7 @@
  * 玩法（吊車投放 + 重心物理混合）：
  *  1. 吊車沿單一軸向左右擺盪（永遠沿畫面左右，鏡頭正對樓房）。風：隨高度增強並有陣風，會把吊車擺盪中心吹偏（bias），
  *     也會在樓層落下途中把它吹走一段（drift）；140 層以上的太空無風。，玩家在合適的瞬間放下新樓層。
- *  2. 樓層不會被裁切；偏移後保留完整尺寸，由「重心穩定」決定是否倒塌：
+ *  2. 樓層不會被裁切；（可選規則 irregular：第 5 層起寬窄高矮不一，預設關閉）；太空（140 層）無風，改無重力磁吸；偏移後保留完整尺寸，由「重心穩定」決定是否倒塌：
  *     對每個接合面 j（第 j 層坐在第 j-1 層上），j 層以上所有樓層的重心，
  *     必須落在 j 層與 j-1 層的重疊區域內；最低的違規接合面以上全部倒塌。
  *  3. 倒塌（含完全沒接到）= 損失 1 條命。命用完淘汰；單人以得分計，多人最後留下者勝。
@@ -19,7 +19,12 @@
 
   const FLOOR_H = 3.4; // 樓層高度（世界單位）；樓層近乎立方體，和參考作品一樣
   const SKY_FLOORS = Infinity; // 預設沒有樓層上限，背景一路換到太空與銀河；測試或特殊規則可用 createGame({ maxFloors })
-  const PALETTE_COUNT = 8;
+  const PALETTE_COUNT = 12;
+  const SPACE_FLOORS = 140; // 到達這個高度進入太空：沒有風，改為無重力（磁吸 + 漂浮）
+  /** 太空磁吸：放下偏移被磁力往中心拉回的比例（依難度） */
+  const MAG = { kids: 0.6, easy: 0.5, normal: 0.4, hard: 0.3 };
+  /** 不規則樓層：寬度／高度的最大變化幅度（第 5 層起，約 30 層內逐漸增加到最大） */
+  const IRR = { kids: { w: 0.3, h: 0.25 }, easy: { w: 0.4, h: 0.3 }, normal: { w: 0.55, h: 0.35 }, hard: { w: 0.65, h: 0.4 } };
   const VARIANT_COUNT = 4;
   const EPS = 1e-6;
 
@@ -43,6 +48,15 @@
     if (n <= 90) return 1;
     if (n < 140) return (140 - n) / 50;
     return 0;
+  }
+
+  /** 第 n 層（0 起算）的外形倍率 {w,h}：只由種子、難度、層數決定，各端點一致。 */
+  function shapeFor(seed, diffKey, n) {
+    if (n < 5) return { w: 1, h: 1 };
+    const S = IRR[diffKey] || IRR.normal, ramp = Math.min(1, (n - 4) / 26);
+    const r = mulberry32((seed ^ Math.imul(n + 5, 2654435769)) >>> 0);
+    const u = r(), v = r();
+    return { w: r3(clamp(1 + (u * 2 - 1) * S.w * ramp, 0.55, 1.5)), h: r3(clamp(1 + (v * 2 - 1) * S.h * ramp, 0.7, 1.4)) };
   }
 
   function mulberry32(a) {
@@ -75,33 +89,33 @@
   const axisFor = () => 'x'; // 吊車永遠沿畫面左右擺盪（和 Tower Bloxx 一樣只有單一軸向）
 
   /**
-   * 穩定度評估。floors：[{x,z}]；size：樓層邊長；ground：地基半寬。
+   * 穩定度評估。floors：[{x,z,w?,h?}]（w、h 為相對 size 的寬度／高度倍率，預設 1；質量 = w·h）；size：標準邊長；ground：地基半寬。
    * 回傳 { fallFrom, maxRatio, ratios[] }；fallFrom=-1 表示穩定。
    */
   function evaluate(floors, size, ground) {
     const n = floors.length;
-    const half = size / 2;
+    const hw = (f) => (size * (f.w || 1)) / 2, hd = size / 2; // 半寬（x 向依 w 變化）、半深
+    const mass = (f) => (f.w || 1) * (f.h || 1);
     if (n >= 2) { // 新層完全沒接到：單獨掉落，塔不受影響
       const a = floors[n - 1], b = floors[n - 2];
-      if (size - Math.abs(a.x - b.x) <= EPS || size - Math.abs(a.z - b.z) <= EPS) {
+      if (hw(a) + hw(b) - Math.abs(a.x - b.x) <= EPS || size - Math.abs(a.z - b.z) <= EPS) {
         const sub = evaluate(floors.slice(0, n - 1), size, ground);
         return { fallFrom: n - 1, maxRatio: 9, ratios: sub.ratios.concat([9]), missed: true };
       }
     }
     const ratios = new Array(n).fill(0);
     let fallFrom = -1, maxRatio = 0;
-    // 由上往下累計重心（j..n-1）
-    const sx = new Array(n + 1).fill(0), sz = new Array(n + 1).fill(0);
-    for (let i = n - 1; i >= 0; i--) { sx[i] = sx[i + 1] + floors[i].x; sz[i] = sz[i + 1] + floors[i].z; }
+    // 由上往下累計質量與力矩（j..n-1）
+    const sm = new Array(n + 1).fill(0), sx = new Array(n + 1).fill(0), sz = new Array(n + 1).fill(0);
+    for (let i = n - 1; i >= 0; i--) { const m = mass(floors[i]); sm[i] = sm[i + 1] + m; sx[i] = sx[i + 1] + floors[i].x * m; sz[i] = sz[i + 1] + floors[i].z * m; }
     for (let j = 0; j < n; j++) {
-      const cnt = n - j;
-      const cx = sx[j] / cnt, cz = sz[j] / cnt;
+      const cx = sx[j] / sm[j], cz = sz[j] / sm[j];
       let loX, hiX, loZ, hiZ;
       if (j === 0) { loX = -ground; hiX = ground; loZ = -ground; hiZ = ground; }
       else {
         const a = floors[j], b = floors[j - 1];
-        loX = Math.max(a.x, b.x) - half; hiX = Math.min(a.x, b.x) + half;
-        loZ = Math.max(a.z, b.z) - half; hiZ = Math.min(a.z, b.z) + half;
+        loX = Math.max(a.x - hw(a), b.x - hw(b)); hiX = Math.min(a.x + hw(a), b.x + hw(b));
+        loZ = Math.max(a.z, b.z) - hd; hiZ = Math.min(a.z, b.z) + hd;
       }
       let ratio;
       if (hiX - loX <= EPS || hiZ - loZ <= EPS) ratio = 9; // 完全沒接到
@@ -126,6 +140,8 @@
     const rng = mulberry32(seed);
     const maxFloors = opts.maxFloors > 0 ? opts.maxFloors : SKY_FLOORS;
     const windOn = opts.wind !== false;
+    const irregular = opts.irregular === true; // 不規則樓層預設關閉（使用者不需要），保留為可選規則
+    const spaceAt = opts.spaceFloors > 0 ? opts.spaceFloors : SPACE_FLOORS;
 
     const g = {
       seed, difficulty: diffKey, mode, D,
@@ -140,13 +156,15 @@
       const r = mulberry32((seed ^ Math.imul(n + 1, 2654435761)) >>> 0);
       return { color: Math.floor(r() * PALETTE_COUNT), variant: Math.floor(r() * VARIANT_COUNT) };
     };
+    const shape = (n) => (irregular ? shapeFor(seed, diffKey, n) : { w: 1, h: 1 });
 
     g.players = (opts.players && opts.players.length ? opts.players : [{ id: 'p1', name: '玩家' }]).map((p, i) => ({
       id: p.id, name: p.name, kind: p.kind || 'human', ai: p.ai, seat: p.seat != null ? p.seat : i,
       lives: startLives, alive: true, score: 0, placed: 0, perfects: 0, topples: 0,
     }));
-    g.floors.push({ x: 0, z: 0, ...visual(0), seat: -1, perfect: false, base: true });
+    g.floors.push({ x: 0, z: 0, ...visual(0), w: 1, h: 1, seat: -1, perfect: false, base: true });
 
+    const arr8 = (f) => [f.x, f.z, f.color, f.variant, f.seat, f.perfect ? 1 : 0, f.w || 1, f.h || 1];
     g.currentPlayer = () => g.players[g.current];
     g.alive = () => g.players.filter((p) => p.alive);
     g.top = () => g.floors[g.floors.length - 1];
@@ -159,13 +177,14 @@
       const r = mulberry32((seed ^ Math.imul(g.turnNo + 7, 40503) ^ Math.imul(g.floors.length, 9973)) >>> 0);
       const n = g.floors.length;
       let wind = 0;
-      if (windOn) {
+      if (windOn && n < spaceAt) {
         const dir = mulberry32((seed ^ Math.imul(Math.floor(n / 7) + 3, 2246822519)) >>> 0)() < 0.5 ? -1 : 1; // 每 7 層左右換一次風向
         const gust = 0.35 + 0.65 * mulberry32((seed ^ Math.imul(g.turnNo + 11, 3266489917) ^ Math.imul(n, 101)) >>> 0)(); // 每回合陣風強弱不同
         wind = r3(dir * windBase(n) * gust);
       }
       const W = WIND[diffKey];
-      return { axis: g.axis(), amp: D.amp, omega: r3(D.speed * speedMul()), phase: r3(r() * Math.PI * 2), look: visual(g.turnNo + 1 + g.floors.length * 131), wind, bias: r3(wind * W.bias), drift: r3(wind * W.drift) };
+      const space = n >= spaceAt;
+      return { axis: g.axis(), amp: D.amp, omega: r3(D.speed * speedMul() * (space ? 0.85 : 1)), phase: r3(r() * Math.PI * 2), look: { ...visual(g.turnNo + 1 + g.floors.length * 131), ...shape(n) }, wind, bias: r3(wind * W.bias), drift: r3(wind * W.drift), space, mag: space ? MAG[diffKey] : 0 };
     };
     g.swingSpec = g.nextSwing();
 
@@ -175,9 +194,12 @@
       const ax = g.axis();
       const drift = g.swingSpec ? g.swingSpec.drift || 0 : 0; // 落下途中被風吹走
       let off = dd + drift, perfect = false;
+      const mag = g.swingSpec ? g.swingSpec.mag || 0 : 0; // 太空磁吸：偏移被拉回中心一部分
+      if (mag) off *= 1 - mag;
       if (Math.abs(off) <= D.tol) { off = 0; perfect = true; }
-      const nf = { x: top.x + (ax === 'x' ? off : 0), z: top.z + (ax === 'z' ? off : 0) };
-      return { nf, perfect, d: dd, off, axis: ax, drift };
+      const look = g.swingSpec ? g.swingSpec.look : null;
+      const nf = { x: top.x + (ax === 'x' ? off : 0), z: top.z + (ax === 'z' ? off : 0), w: look && look.w || 1, h: look && look.h || 1 };
+      return { nf, perfect, d: dd, off, axis: ax, drift, mag };
     }
 
     /** 不修改狀態的試算：AI 與預覽用。 */
@@ -223,14 +245,14 @@
       if (g.over) return null;
       const p = g.currentPlayer();
       const sw = g.swingSpec;
-      const { nf, perfect, d, off, axis, drift } = placeAt(move && move.d);
+      const { nf, perfect, d, off, axis, drift, mag } = placeAt(move && move.d);
       const look = sw.look;
-      const placed = { x: r3(nf.x), z: r3(nf.z), color: look.color, variant: look.variant, seat: p.seat, perfect };
+      const placed = { x: r3(nf.x), z: r3(nf.z), color: look.color, variant: look.variant, w: nf.w, h: nf.h, seat: p.seat, perfect };
       const test = g.floors.concat([placed]);
       const ev = evaluate(test, D.size, D.ground);
       const toppled = ev.fallFrom >= 0;
       const res = {
-        no: g.turnNo + 1, playerId: p.id, seat: p.seat, d: r3(d), drift: r3(drift), off: r3(off), axis, perfect, placed,
+        no: g.turnNo + 1, playerId: p.id, seat: p.seat, d: r3(d), drift: r3(drift), mag, off: r3(off), axis, perfect, placed,
         toppled, missed: !!ev.missed, fallFrom: ev.fallFrom, fallen: [], pivot: null, gain: 0, combo: 0,
         eliminated: false, over: false, winnerId: null, summit: false,
         swing: sw,
@@ -247,7 +269,7 @@
           res.pivot = { j: ev.fallFrom, dx: r3(cx / cnt - test[ev.fallFrom - 1].x), dz: r3(cz / cnt - test[ev.fallFrom - 1].z) };
         } else res.pivot = { j: 0, dx: placed.x, dz: placed.z };
         g.floors = test.slice(0, ev.fallFrom);
-        if (g.floors.length === 0) g.floors = [{ x: 0, z: 0, ...visual(0), seat: -1, perfect: false, base: true }]; // 保底：地基不會消失
+        if (g.floors.length === 0) g.floors = [{ x: 0, z: 0, ...visual(0), w: 1, h: 1, seat: -1, perfect: false, base: true }]; // 保底：地基不會消失
         g.combo = 0;
         p.topples++;
         p.lives--;
@@ -261,7 +283,7 @@
       }
       res.combo = g.combo;
       res.height = g.floors.length;
-      res.remaining = g.floors.map((f) => [f.x, f.z, f.color, f.variant, f.seat, f.perfect ? 1 : 0]);
+      res.remaining = g.floors.map(arr8);
 
       // 結束條件
       if (g.mode === 'solo') { if (!p.alive) finish(); }
@@ -297,7 +319,7 @@
 
     g.publicState = () => ({
       seed, difficulty: diffKey, mode, size: D.size, ground: D.ground, amp: D.amp, tol: D.tol,
-      floors: g.floors.map((f) => [f.x, f.z, f.color, f.variant, f.seat, f.perfect ? 1 : 0]),
+      floors: g.floors.map(arr8),
       players: g.publicPlayers(), current: g.current, currentId: g.over ? null : g.currentPlayer().id,
       turnNo: g.turnNo, over: g.over, winnerId: g.winnerId, summit: g.summit,
       combo: g.combo, bestCombo: g.bestCombo, peak: g.peak, swing: g.over ? null : g.swingSpec,
@@ -309,6 +331,6 @@
 
   return {
     FLOOR_H, SKY_FLOORS, PALETTE_COUNT, VARIANT_COUNT, DIFFICULTIES, mulberry32, createGame,
-    swingPos, timeToReach, evaluate, axisFor, clamp, windBase, WIND,
+    swingPos, timeToReach, evaluate, axisFor, clamp, windBase, WIND, SPACE_FLOORS, MAG, IRR, shapeFor,
   };
 });
