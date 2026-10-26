@@ -270,4 +270,12 @@ io.on('connection', (socket) => {
 if (require.main === module) {
   server.listen(PORT, () => console.log(`疊疊高樓 伺服器啟動：http://localhost:${PORT}`));
 }
+// Render 更新或重啟時會送 SIGTERM：先告知所有房間（顯示「房間已結束」並回大廳），再結束，避免玩家只看到莫名斷線
+function shutdown(sig) {
+  console.log(`收到 ${sig}，通知房間後結束`);
+  for (const room of [...rm.rooms.values()]) io.to(room.id).emit('room:closed', { reason: '伺服器更新重啟，房間已結束，請稍後重新建立' });
+  setTimeout(() => process.exit(0), 800).unref();
+}
+if (require.main === module) { process.once('SIGTERM', () => shutdown('SIGTERM')); process.once('SIGINT', () => shutdown('SIGINT')); }
+
 module.exports = { app, server, io, rm };
