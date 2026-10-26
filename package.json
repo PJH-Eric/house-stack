@@ -17,7 +17,8 @@
     "overlap:check": "node scripts/overlap-check.js",
     "tap:check": "node scripts/tap-check.js",
     "tap:online": "node scripts/online-tap-check.js",
-    "timer:check": "node scripts/timer-check.js"
+    "timer:check": "node scripts/timer-check.js",
+    "timer:online": "node scripts/online-timer-check.js"
   },
   "engines": {
     "node": ">=18"

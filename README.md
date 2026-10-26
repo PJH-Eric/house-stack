@@ -72,6 +72,7 @@ npm start            # http://localhost:3090（或 Windows 雙擊「啟動遊戲
 ```bash
 npm test             # 多語系字典、GA4、SEO 注入、暫停提示日期、規則／AI／房間單元測試（26 項）
 npm run verify       # npm test + 真實伺服器的線上整合檢查（22 項，含亂填資料防護、建房限速、latency:ping）
+npm run timer:online     # 線上限時：雙方看到倒數、逾時伺服器自動放下並換手（需先 npm start）
 npm run timer:check      # 每回合限時：倒數、逾時自動放下、暫停停住（需先 npm start）
 npm run tap:check        # 點螢幕任何位置放下（桌機滑鼠／手機平板觸控），按鈕與彈窗不誤放（需先 npm start）
 npm run tap:online       # 線上對局的點擊：非輪到者／觀戰者不放下、輸入框聚焦時只失焦（需先 npm start）

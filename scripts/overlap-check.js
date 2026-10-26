@@ -10,7 +10,7 @@ const LANGS = (process.env.LANGS || 'zh-Hant,en,zh-Hans').split(',');
 
 function scan() {
   const fixed = [...document.querySelectorAll('.gear-wrap > *')].filter((e) => !e.hidden && e.getBoundingClientRect().width);
-  const targets = [...document.querySelectorAll('.btn, .icon-btn, .sel-btn, .tf-input, h1, h2, .stat, .turn-banner, .lobby-link')].filter((e) => !e.closest('.gear-wrap') && !e.closest('.sel-pop') && e.getBoundingClientRect().width && getComputedStyle(e).visibility !== 'hidden');
+  const targets = [...document.querySelectorAll('.btn, .icon-btn, .sel-btn, .tf-input, h1, h2, .stat, .turn-banner, .lobby-link, .stab, .star-ico, .turn-timer, .hud-chip')].filter((e) => !e.closest('.gear-wrap') && !e.closest('.sel-pop') && e.getBoundingClientRect().width && getComputedStyle(e).visibility !== 'hidden');
   const out = [];
   const inter = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 3 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 3;
   for (const f of fixed) {

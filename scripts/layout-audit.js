@@ -17,7 +17,7 @@ function auditPage() {
   for (const el of document.querySelectorAll('select, textarea, input[type=checkbox], input[type=radio], input[type=range], input[type=number], input[type=date], details, dialog')) out.push('原生控制項：' + el.tagName + ' ' + (el.type || ''));
   for (const el of document.querySelectorAll('input')) if (!el.closest('.tf')) out.push('輸入框未經自訂元件封裝');
   // 文字被裁切：有文字的元素內容比盒子寬／高，且會被 overflow 或 ellipsis 截掉；或按鈕文字斷成過多行（多語系常見）
-  for (const el of document.querySelectorAll('.btn, .sel-btn, .badge, .tg-label, .stat small, .stat b, h1, h2, h3, .modal-head h2, .rr-main, .rr-sub, .seat, .notice')) {
+  for (const el of document.querySelectorAll('.btn, .sel-btn, .badge, .tg-label, .stat small, .stat b, .turn-banner, h1, h2, h3, .modal-head h2, .rr-main, .rr-sub, .seat, .notice')) {
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height || el.closest('[hidden]') || getComputedStyle(el).visibility === 'hidden') continue;
     const cs = getComputedStyle(el);
