@@ -145,7 +145,8 @@
     const D = DIFFICULTIES[diffKey];
     const mode = opts.mode === 'versus' ? 'versus' : 'solo';
     const seed = (opts.seed >>> 0) || 1;
-    const startLives = opts.lives || (mode === 'versus' ? D.versusLives : D.lives);
+    const reqLives = Math.floor(+opts.lives);
+    const startLives = reqLives >= 1 ? Math.min(reqLives, 99) : (mode === 'versus' ? D.versusLives : D.lives); // 不合理的命數（負數、NaN、過大）回到難度預設或上限
     const rng = mulberry32(seed);
     const maxFloors = opts.maxFloors > 0 ? opts.maxFloors : SKY_FLOORS;
     const windOn = opts.wind !== false;

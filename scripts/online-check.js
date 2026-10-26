@@ -43,6 +43,12 @@ const until = async (fn, ms = 20000, label = '') => {
       const h2 = await (await fetch(URL + '/health')).json(); assert.ok(h2.ok); f.close();
       step('亂填的事件資料不會讓伺服器當掉（皆有回應）');
     }
+    { // 建房頻率限制：每個連線 10 秒最多 5 間
+      const f = await client(); let okN = 0, lastCode = '';
+      for (let i = 0; i < 7; i++) { const r = await emit(f, 'room:create', { name: 'Spam' }); if (r.ok) okN++; else lastCode = r.code; }
+      assert.strictEqual(okN, 5); assert.strictEqual(lastCode, 'rate'); f.close();
+      step('連續建房被限速（5 間後回 rate）');
+    }
 
     const host = await client(), p2 = await client(), watcher = await client(), late = await client();
     const lw = await emit(late, 'lobby:watch', undefined);

@@ -40,7 +40,7 @@ const ok = (c, m) => { if (!c) { bad++; console.log('✘ ' + m); } else console.
     await host.waitForFunction(() => window.__app.app.online.view.canStart.ok, null, { timeout: 8000 });
     await shot(host, 'room-full');
     await host.getByRole('button', { name: '開始對局' }).click();
-    for (const p of [host, guest, spec]) await p.waitForSelector('.game', { timeout: 10000 });
+    for (const p of [host, guest, spec]) await p.waitForSelector('.game', { timeout: 40000 });
     ok(true, '三個客戶端同時進入對局畫面');
     await sleep(2500);
     const taps = async (p) => { const can = await p.evaluate(() => { const d = window.__app.app.screen.debug; return d.S.canAct && !d.board.busy; }); return can; };

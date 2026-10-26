@@ -118,6 +118,15 @@ async function test(name, fn) {
     assert.strictEqual(ev.fallFrom, -1);
   });
 
+  await test('開局選項防呆：命數負數／NaN／過大、未知難度與形狀、亂填的放下位置都不會壞', () => {
+    assert.strictEqual(T.createGame({ lives: -3 }).players[0].lives, 3);
+    assert.strictEqual(T.createGame({ lives: NaN }).players[0].lives, 3);
+    assert.strictEqual(T.createGame({ lives: 1e9 }).players[0].lives, 99);
+    const g = T.createGame({ difficulty: 'zzz', mode: 'zzz', shapes: 'zzz', lives: 50 });
+    assert.deepStrictEqual([g.difficulty, g.mode, g.publicState().shapes], ['normal', 'solo', 'off']);
+    for (const d of [NaN, undefined, 'x', Infinity, null, {}, []]) { const r = g.drop({ d }); assert.ok(r && Number.isFinite(r.off)); }
+    g.drop(); g.drop(null);
+  });
   await test('樓層形狀：off 全標準；fixed 開局隨機一種、整場相同；every 每層不同；決定性', () => {
     for (let n = 0; n < 30; n++) assert.deepStrictEqual(T.shapeFor(9, 'normal', n, 'off'), { w: 1, h: 1 });
     const f = T.shapeFor(9, 'normal', 1, 'fixed'); assert.ok(f.w !== 1 || f.h !== 1);

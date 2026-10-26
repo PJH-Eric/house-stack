@@ -129,6 +129,7 @@ function afterRemoved(room, out) {
 // ---------------- Socket 事件 ----------------
 const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
 
+const MAX_ROOMS = +process.env.MAX_ROOMS || 300;
 process.on('uncaughtException', (e) => console.error('[未預期的例外]', e && e.stack || e)); // 單一房間的計時器／AI 出錯不應讓整個服務停掉
 process.on('unhandledRejection', (e) => console.error('[未處理的拒絕]', e && e.stack || e));
 
@@ -148,6 +149,7 @@ io.on('connection', (socket) => {
     }
   }));
   let chatBucket = { n: 0, t: Date.now() };
+  let createBucket = { n: 0, t: Date.now() };
   const ok = (cb, data) => typeof cb === 'function' && cb({ ok: true, ...data });
   const fail = (cb, code, msg) => typeof cb === 'function' && cb({ ok: false, code, msg });
 
@@ -167,6 +169,10 @@ io.on('connection', (socket) => {
   }
 
   socket.on('room:create', (d = {}, cb) => {
+    const now = Date.now(); // 防濫用：每個連線 10 秒最多建 5 間，全服務最多 300 間
+    createBucket = now - createBucket.t > 10000 ? { n: 0, t: now } : createBucket;
+    if (++createBucket.n > 5) return fail(cb, 'rate', '建立房間太頻繁，請稍後再試');
+    if (rm.rooms.size >= MAX_ROOMS) return fail(cb, 'full', '伺服器房間已滿，請稍後再試');
     const { room, member } = rm.createRoom({ sid, name: d.name, maxPlayers: num(d.maxPlayers, 4), difficulty: d.difficulty, lives: num(d.lives, 0), shapes: d.shapes });
     enter(room, member, null, cb);
   });

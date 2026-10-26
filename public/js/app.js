@@ -252,7 +252,7 @@ function lobby() {
     if (!rooms.length) { listBox.append(h('div', { class: 'empty' }, '目前沒有房間。按「快速加入」會自動幫你開一間！')); return; }
     for (const r of rooms) {
       listBox.append(h('div', { class: 'room-row' },
-        h('div', { class: 'rr-main' }, h('b', { class: 'code' }, r.id), h('span', null, `${r.host} 的房間`), Badge(diffLabel(r.difficulty), 'toy'), Badge(r.status === 'playing' ? '對局中' : '等待中', r.status === 'playing' ? 'warn' : 'ok')),
+        h('div', { class: 'rr-main' }, h('b', { class: 'code' }, r.id), h('span', null, `${r.host} 的房間`), Badge(diffLabel(r.difficulty), 'toy'), ...(r.shapes && r.shapes !== 'off' ? [Badge(r.shapes === 'fixed' ? '固定形狀' : '每層不同', 'toy')] : []), Badge(r.status === 'playing' ? '對局中' : '等待中', r.status === 'playing' ? 'warn' : 'ok')),
         h('div', { class: 'rr-sub' }, `${r.players}/${r.seats} 位玩家・${r.watchers} 位觀戰`),
         h('div', { class: 'rr-act' },
           Btn({ label: '加入', size: 'sm', kind: 'primary', disabled: r.status === 'playing' || r.players >= r.seats, onClick: () => join(r.id, 'player') }),
@@ -307,7 +307,7 @@ function lobby() {
       const role = r.role === 'spectator' ? '觀戰' : '加入對戰';
       const invNick = TextField({ value: ensureNick(), maxLength: 12, label: '你的暱稱', onInput: (v) => store.set({ nick: v.slice(0, 12) }) });
       inviteBox.append(h('div', { class: 'notice invite' },
-        h('b', null, `你被邀請${role}房間 ${r.roomId}`), h('p', null, `${diffLabel(r.difficulty)}・${r.players}/${r.seats} 位玩家${r.status === 'playing' ? '・對局進行中' : ''}`),
+        h('b', null, `你被邀請${role}房間 ${r.roomId}`), h('p', null, `${diffLabel(r.difficulty)}${r.shapes === 'fixed' ? '・固定形狀' : r.shapes === 'every' ? '・每層不同' : ''}・${r.players}/${r.seats} 位玩家${r.status === 'playing' ? '・對局進行中' : ''}`),
         h('label', { class: 'field-label' }, '你的暱稱（確認後才會進入）'), invNick,
         Btn({ label: `確認並${role}`, kind: 'primary', block: true, onClick: async () => { const t = app.invite; app.invite = null; store.set({ nick: invNick.input.value.slice(0, 12) }); await join(t.roomId, r.role === 'spectator' ? 'spectator' : 'player', t.token); } })));
     });

@@ -70,7 +70,7 @@ npm start            # http://localhost:3090（或 Windows 雙擊「啟動遊戲
 ## 測試與檢查
 
 ```bash
-npm run verify       # 規則／AI／房間單元測試（25 項）+ 真實伺服器的線上整合檢查（20 項，含亂填資料防護）
+npm run verify       # 規則／AI／房間單元測試（26 項）+ 真實伺服器的線上整合檢查（21 項，含亂填資料防護與建房限速）
 npm run audit        # 版面巡檢（Playwright）：5 種尺寸方向 × 所有畫面（BASE=http://localhost:3090/）
 npm run screenshots  # 擷取實際遊戲畫面到 screenshots/（可用 ONLY=… 分批）
 node scripts/online-ui.js   # 3 個瀏覽器（房主／玩家／觀戰）的線上畫面端對端
