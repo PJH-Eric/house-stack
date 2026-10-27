@@ -39,7 +39,7 @@ async function load(search, stored) {
   // 1. 所有 t('…') 繁中原文都有英文與簡體，且變數一致
   const keys = clientKeys(root);
   assert.ok(keys.length > 250, '應掃到大量字串，目前 ' + keys.length);
-  const dynamic = ['幼幼班', '簡單', '普通', '困難']; // t(變數) 形式使用的難度名稱
+  const dynamic = ['幼幼班', '簡單', '普通', '困難', '神話']; // t(變數) 形式使用的難度名稱
   for (const k of [...keys, ...dynamic]) {
     assert.ok(Object.prototype.hasOwnProperty.call(EN, k), '缺英文：' + k);
     assert.ok(Object.prototype.hasOwnProperty.call(HANS, k), '缺簡體：' + k + '（跑 python3 scripts/gen-hans.py）');

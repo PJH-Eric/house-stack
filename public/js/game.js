@@ -110,7 +110,7 @@ export function GameScreen(cfg) {
     if (S.role === 'spectator') summaryBox.append(h('div', { class: 'sum-note spec' }, icon('eye', 16), t(' 你是觀戰者，可以聊天但不能操作')));
     summaryBox.append(h('div', { class: 'keys' },
       h('div', null, KeyCap(t('空白')), t(' 放下樓層')), h('div', null, KeyCap('Esc'), t(' 選單')),
-      h('div', { class: 'keys-note' }, t('點一下螢幕任何位置（滑鼠左鍵或觸控）或按「放下」。樓層重心要落在下方樓層的重疊範圍內，否則整段會倒！越高風越大：風會把吊車吹偏，樓層落下時也會被吹走，白框是已算入風的預測落點。'))));
+      h('div', { class: 'keys-note' }, t('點一下螢幕任何位置（滑鼠左鍵或觸控）或按「放下」。樓層重心要落在下方樓層的重疊範圍內，否則整段會倒！約 50～90 層風最強：風會把吊車吹偏，樓層落下時也會被吹走，白框是已算入風的預測落點。'))));
   }
   function syncUnread() { unreadBadge.hidden = !S.unread; unreadBadge.textContent = S.unread > 9 ? '9+' : S.unread; }
 
@@ -275,7 +275,7 @@ export function GameScreen(cfg) {
     }
     if (!online) {
       S.turnId = res.nextPlayerId;
-      setTimeout(() => beginTurn({ playerId: res.nextPlayerId, swing: res.nextSwing, t0: Date.now(), offset: 0, sec: g.turnSec || 0 }), 350);
+      setTimeout(() => beginTurn({ playerId: res.nextPlayerId, swing: res.nextSwing, t0: Date.now(), offset: 0, sec: g.turnSec || 0 }), 150);
     } else if (S.pending) { const t = S.pending; S.pending = null; beginTurn(t); }
     else { S.turnId = res.nextPlayerId; renderSummary(); }
   }
@@ -399,7 +399,7 @@ export function GameScreen(cfg) {
     mount() {
       ro.observe(canvas); board.resize(); renderSummary(); updateBanner(); syncControls();
       raf = requestAnimationFrame(tick);
-      if (!online) setTimeout(() => { if (!destroyed) beginTurn({ playerId: g.currentPlayer().id, swing: g.swingSpec, t0: Date.now(), offset: 0, sec: g.turnSec || 0 }); }, 700);
+      if (!online) setTimeout(() => { if (!destroyed) beginTurn({ playerId: g.currentPlayer().id, swing: g.swingSpec, t0: Date.now(), offset: 0, sec: g.turnSec || 0 }); }, 500);
       else {
         const v = cfg.view;
         if (v.status === 'ended') { S.over = true; S.winnerId = v.game && v.game.winnerId; setTimeout(showResult, 300); }

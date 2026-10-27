@@ -42,7 +42,7 @@ const until = async (fn, ms = 20000, label = '') => {
     }
     { // 惡意／錯誤的事件資料不能讓伺服器掛掉，也都要有回應
       const f = await client();
-      const bads = [undefined, null, 5, 'x', [], {}, { name: {} }, { maxPlayers: 'NaN', difficulty: {}, lives: Infinity, shapes: [] }, { roomId: {}, token: [] }];
+      const bads = [undefined, null, 5, 'x', [], {}, { name: {} }, { maxPlayers: 'NaN', difficulty: {}, shapes: [] }, { roomId: {}, token: [] }];
       for (const ev of ['room:create', 'room:join', 'room:quick', 'room:resume', 'invite:info', 'room:settings', 'room:ai:add', 'room:ready', 'room:kick', 'room:start', 'game:drop', 'chat:send', 'room:seat', 'room:watch', 'room:revoke', 'room:leave']) {
         for (const d of bads) { const r = await Promise.race([emit(f, ev, d), wait(1500).then(() => 'timeout')]); assert.notStrictEqual(r, 'timeout', ev + ' 沒有回應'); }
       }

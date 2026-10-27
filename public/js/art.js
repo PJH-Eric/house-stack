@@ -665,7 +665,7 @@ export class Board {
       if (a.y <= FH * 0.5) {
         this.spawnDust(f.position.x, 0.4, f.position.z, 10, 1.4); a.cb.onFall && a.cb.onFall();
         this.debris.push({ group: f, vel: new THREE.Vector3(0, 0, 0), spin: new THREE.Vector3(0, 0, 0), age: 0, resting: true, fade: 0.9 });
-        this.dropFloor = null; this.anim = { ...a, type: 'wait', t: 0, dur: 1.2 };
+        this.dropFloor = null; this.anim = { ...a, type: 'wait', t: 0, dur: 0.8 };
       }
       return;
     }
@@ -702,7 +702,7 @@ export class Board {
     if (k >= 1) {
       if (e) e.group.scale.set(1, 1, 1);
       if (a.topple) this.startTopple(a.res, this.entries.length - 1);
-      else { this.anim = { ...a, type: 'wait', t: 0, dur: 0.55 }; }
+      else { this.anim = { ...a, type: 'wait', t: 0, dur: 0.3 }; }
     }
   }
 
@@ -724,7 +724,7 @@ export class Board {
       });
       this.scene.remove(a.pivot);
       a.cb.onFall && a.cb.onFall();
-      this.anim = { ...a, type: 'wait', t: 0, dur: 1.9, pivot: null, entries: null };
+      this.anim = { ...a, type: 'wait', t: 0, dur: 1.3, pivot: null, entries: null };
       this.roof = null; this.makeRoof();
       if (!this.entries.length) { const rem = a.res.remaining; rem.forEach((f, i) => this.addEntry({ x: f[0], z: f[1], color: f[2], variant: f[3], seat: f[4], w: f[6] || 1, h: f[7] || 1 }, i)); }
       this.afterTowerChange(false);

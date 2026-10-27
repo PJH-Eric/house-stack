@@ -209,6 +209,21 @@ async function test(name, fn) {
     assert.ok(hard > normal && normal > easy && easy > kids, '難度單調遞增');
   });
 
+  await test('神話難度：參數比困難更嚴苛（樓層更窄、吊車更快、容許值更小、風更強、1 顆愛心），可開單人／對戰', () => {
+    const order = ['kids', 'easy', 'normal', 'hard', 'mythic'], D = T.DIFFICULTIES;
+    for (let i = 1; i < order.length; i++) {
+      const a = D[order[i - 1]], b = D[order[i]];
+      assert.ok(b.size < a.size && b.speed > a.speed && b.tol < a.tol && b.maxSpeedMul > a.maxSpeedMul && b.turnSec < a.turnSec && b.lives <= a.lives && b.versusLives <= a.versusLives, order[i] + ' 比 ' + order[i - 1] + ' 更難');
+      assert.ok(T.WIND[order[i]].bias > T.WIND[order[i - 1]].bias && T.WIND[order[i]].drift > T.WIND[order[i - 1]].drift, '風力遞增');
+    }
+    assert.strictEqual(D.mythic.label, '神話');
+    assert.strictEqual(T.createGame({ difficulty: 'mythic', mode: 'solo' }).players[0].lives, 1);
+    assert.strictEqual(T.createGame({ difficulty: 'mythic', mode: 'versus', players: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] }).players[0].lives, 1);
+    assert.strictEqual(T.createGame({ difficulty: 'mythic', mode: 'versus' }).turnSec, 15, '對戰預設 15 秒');
+    const g = T.createGame({ seed: 4, difficulty: 'mythic', mode: 'solo', lives: 3 }); for (let i = 0; i < 20 && !g.over; i++) g.drop({ d: 0 });
+    assert.ok(g.floors.length > 1, '神話可正常放樓層');
+  });
+
   console.log('房間生命週期');
   const { RoomManager } = require('../lib/rooms.js');
   await test('零實體玩家自動關閉（AI 與觀戰者不算）、邀請失效、不可復活', () => {

@@ -106,7 +106,7 @@ function doDrop(room, playerId, move) {
   room.turn = null;
   if (res.over) room.status = 'ended';
   io.to(room.id).emit('game:drop', res);
-  const wait = (res.toppled ? 2600 : 1100);
+  const wait = (res.toppled ? 2000 : 800);
   rm.timer(room, () => {
     if (res.over) { for (const m of room.members.values()) if (m.role === 'player' && m.id !== room.hostId) m.ready = false; pushState(room); pushLobby(); }
     else beginTurn(room);
@@ -176,7 +176,7 @@ io.on('connection', (socket) => {
     createBucket = now - createBucket.t > 10000 ? { n: 0, t: now } : createBucket;
     if (++createBucket.n > 5) return fail(cb, 'rate', '建立房間太頻繁，請稍後再試');
     if (rm.rooms.size >= MAX_ROOMS) return fail(cb, 'full', '伺服器房間已滿，請稍後再試');
-    const { room, member } = rm.createRoom({ sid, name: d.name, maxPlayers: num(d.maxPlayers, 4), difficulty: d.difficulty, lives: num(d.lives, 0), shapes: d.shapes, turnLimit: num(d.turnLimit, 0) });
+    const { room, member } = rm.createRoom({ sid, name: d.name, maxPlayers: num(d.maxPlayers, 4), difficulty: d.difficulty, shapes: d.shapes, turnLimit: num(d.turnLimit, 0) });
     enter(room, member, null, cb);
   });
 

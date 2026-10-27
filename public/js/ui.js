@@ -162,6 +162,10 @@ export function Select({ label, value, options, onChange, block = true, disabled
   btn.addEventListener('click', () => {
     if (pop) return close();
     pop = h('div', { class: 'sel-pop', role: 'listbox' });
+    const r = btn.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom;
+    const full = options.length * (options.some((o) => o.sub) ? 58 : 46) + 12; // 選項全部放得下就不出現捲軸；空間不夠才捲動
+    const maxH = Math.max(160, Math.min(full, Math.max(below, r.top) - 20, 480));
     const sa = ScrollArea(h('div', { class: 'sel-list' }, options.map((o) => {
       const it = h('button', { type: 'button', role: 'option', class: 'sel-opt' + (o.value === v ? ' cur' : ''), 'aria-selected': String(o.value === v) }, o.label, o.sub ? h('small', null, o.sub) : null);
       it.addEventListener('click', () => pick(o));
@@ -171,10 +175,9 @@ export function Select({ label, value, options, onChange, block = true, disabled
         else if (e.key === 'Escape') { e.stopPropagation(); close(); btn.focus(); }
       });
       return it;
-    })), { maxHeight: 240 });
+    })), { maxHeight: maxH });
     pop.append(sa);
-    const r = btn.getBoundingClientRect();
-    const below = window.innerHeight - r.bottom, estH = Math.min(244, options.length * 46 + 8);
+    const estH = maxH + 4;
     pop.style.position = 'fixed'; pop.style.left = r.left + 'px'; pop.style.width = Math.max(r.width, 180) + 'px';
     if (below < estH + 12 && r.top > below) { pop.style.bottom = (window.innerHeight - r.top + 4) + 'px'; } else { pop.style.top = (r.bottom + 4) + 'px'; }
     document.body.append(pop);

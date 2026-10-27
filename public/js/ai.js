@@ -1,7 +1,7 @@
 /*
  * 疊疊高樓 — 電腦對手（瀏覽器與伺服器共用，全域 HouseAI）
  * 電腦先決定想放的偏移 d，再等吊車擺到那個位置才放下，因此畫面上看起來和真人一樣在「抓時機」。
- * 四段難度的可觀察差異：
+ * 四段難度的可觀察差異（電腦只有這四段；「神話」是遊戲難度，困難電腦已能穩定完美，不另設更強的電腦）：
  *   kids   幼幼班：只瞄準中央，誤差很大，不評估
  *   easy   簡單  ：瞄準中央，誤差中等；偶爾（20%）試算一次，會倒才重瞄
  *   normal 普通  ：瞄準中央，誤差小；試算，會倒就重瞄（70%）
@@ -62,7 +62,7 @@
       d = best.c; why = 'probe';
     }
 
-    const tReach = R.timeToReach(game.swingSpec, d, tNow + 0.7); // 至少 0.7 秒「反應時間」
+    const tReach = R.timeToReach(game.swingSpec, d, tNow + 0.45); // 至少 0.45 秒「反應時間」
     const thinkMs = Math.max(500, Math.round((tReach - tNow) * 1000));
     return { d: Math.round(d * 1000) / 1000, thinkMs, why };
   }

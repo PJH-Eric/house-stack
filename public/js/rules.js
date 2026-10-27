@@ -22,9 +22,9 @@
   const PALETTE_COUNT = 12;
   const SPACE_FLOORS = 140; // 到達這個高度進入太空：沒有風，改為無重力（磁吸 + 漂浮）
   /** 太空磁吸：放下偏移被磁力往中心拉回的比例（依難度） */
-  const MAG = { kids: 0.6, easy: 0.5, normal: 0.4, hard: 0.3 };
+  const MAG = { kids: 0.6, easy: 0.5, normal: 0.4, hard: 0.3, mythic: 0.2 };
   /** 不規則樓層：寬度／高度的最大變化幅度（第 5 層起，約 30 層內逐漸增加到最大） */
-  const IRR = { kids: { w: 0.3, h: 0.25 }, easy: { w: 0.4, h: 0.3 }, normal: { w: 0.55, h: 0.35 }, hard: { w: 0.65, h: 0.4 } };
+  const IRR = { kids: { w: 0.3, h: 0.25 }, easy: { w: 0.4, h: 0.3 }, normal: { w: 0.55, h: 0.35 }, hard: { w: 0.65, h: 0.4 }, mythic: { w: 0.7, h: 0.45 } };
   const VARIANT_COUNT = 4;
   const EPS = 1e-6;
 
@@ -33,12 +33,13 @@
     easy: { label: '簡單', size: 4.4, ground: 8, amp: 4.4, speed: 1.2, ramp: 0.014, maxSpeedMul: 1.7, tol: 0.34, lives: 3, versusLives: 2, turnSec: 30 },
     normal: { label: '普通', size: 4.0, ground: 7, amp: 4.4, speed: 1.5, ramp: 0.017, maxSpeedMul: 1.9, tol: 0.27, lives: 3, versusLives: 2, turnSec: 25 },
     hard: { label: '困難', size: 3.6, ground: 6, amp: 4.4, speed: 1.85, ramp: 0.02, maxSpeedMul: 2.1, tol: 0.2, lives: 2, versusLives: 1, turnSec: 20 },
+    mythic: { label: '神話', size: 3.2, ground: 5, amp: 4.4, speed: 2.2, ramp: 0.024, maxSpeedMul: 2.4, tol: 0.14, lives: 1, versusLives: 1, turnSec: 15 },
   };
 
   /** 風：bias = 吊車擺盪中心被吹偏的量；drift = 放下後落下途中被吹走的量（|風|=1 時的最大值，依難度） */
   const WIND = {
     kids: { bias: 0.4, drift: 0.35 }, easy: { bias: 0.8, drift: 0.7 },
-    normal: { bias: 1.2, drift: 1.1 }, hard: { bias: 1.6, drift: 1.5 },
+    normal: { bias: 1.2, drift: 1.1 }, hard: { bias: 1.6, drift: 1.5 }, mythic: { bias: 2.0, drift: 1.9 },
   };
   const WIND_LIMIT = 2; // 放下位置的容許範圍 = 吊車振幅 + 這個值
   /** 依高度的風力曲線：低樓層無風，逐漸增強，約 50–90 層最強（噴射氣流），之後減弱，140 層以上（太空）無風。 */

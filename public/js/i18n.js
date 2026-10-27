@@ -14,7 +14,7 @@ export const SUPPORTED = ['zh-Hant', 'zh-Hans', 'en'];
 export const LANG_NAMES = { 'zh-Hant': '繁體中文', 'zh-Hans': '简体中文', en: 'English' };
 /* 網頁標題與說明：繁中原文必須與 seo.config.json 一致（tests/seo.js 會檢查） */
 export const META_TITLE = "疊疊高樓｜免費線上 3D 疊房子・單人與多人對戰";
-export const META_DESC = "免費免下載的 3D 吊車疊房子遊戲，用重心判定疊高樓，越高風越大、太空還有無重力。單人挑戰、對電腦輪流，也能線上多人對戰與觀戰，手機平板都能玩。";
+export const META_DESC = "免費免下載的 3D 吊車疊房子遊戲，用重心判定疊高樓，中段樓層風力最強、太空還有無重力。單人挑戰、對電腦輪流，也能線上多人對戰與觀戰，手機平板都能玩。";
 const KEY = 'game-island-lang';
 const DEFAULT = 'zh-Hant';
 const dicts = { 'zh-Hant': {}, 'zh-Hans': HANS, en: EN };

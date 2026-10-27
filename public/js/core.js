@@ -5,16 +5,17 @@ const R = window.HouseRules;
 
 export const app = { go: () => {}, screen: null, online: null, openSettings: () => {} };
 
-export const DIFF_KEYS = ['kids', 'easy', 'normal', 'hard'];
+export const DIFF_KEYS = ['kids', 'easy', 'normal', 'hard', 'mythic'];
 export const DIFF_DESC = {
   kids: t('樓層超寬、吊車很慢、愛心很多'),
   easy: t('樓層寬、吊車偏慢'),
   normal: t('樓層與速度適中'),
   hard: t('樓層窄、吊車快，容錯很小'),
+  mythic: t('樓層最窄、吊車極快、風最強，只有 1 顆愛心'),
 };
-export const diffLabel = (k) => t((R.DIFFICULTIES[k] || {}).label || k); // 幼幼班／簡單／普通／困難（字典見 locales.js）
+export const diffLabel = (k) => t((R.DIFFICULTIES[k] || {}).label || k); // 幼幼班／簡單／普通／困難／神話（字典見 locales.js）
 export const DIFF_OPTS = DIFF_KEYS.map((k) => ({ value: k, label: diffLabel(k), sub: DIFF_DESC[k] }));
-export const AI_OPTS = DIFF_KEYS.map((k) => ({ value: k, label: t('電腦・') + diffLabel(k) }));
+export const AI_OPTS = DIFF_KEYS.filter((k) => k !== 'mythic').map((k) => ({ value: k, label: t('電腦・') + diffLabel(k) }));
 
 export function nick() { return (store.get().nick || '').trim(); }
 export function randomNick() {
