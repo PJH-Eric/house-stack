@@ -21,7 +21,7 @@
     "timer:online": "node scripts/online-timer-check.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": "22.x"
   },
   "dependencies": {
     "express": "^4.19.2",

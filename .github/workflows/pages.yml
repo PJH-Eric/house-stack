@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - name: 測試（多語系、GA4、SEO 注入、規則；沒過就不佈署）
@@ -50,3 +50,25 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+  # 部署後實際打線上網址：頁面、GA4 設定、env.js 的 server URL，以及 Render 後端 /health（冷啟動最多等約 2 分鐘）。
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: 檢查線上頁面與 GA4
+        env:
+          SITE: https://pjh-eric.github.io/house-stack/
+          GA_ID: ${{ vars.GA_MEASUREMENT_ID || 'G-PG79WZK8QY' }}
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors "$SITE" -o index.html
+          grep -q "GAME_ANALYTICS_CONFIG" index.html
+          grep -q "$GA_ID" index.html
+          grep -q 'rel="canonical"' index.html
+          curl -fsS "${SITE}env.js" -o env.js
+          cat env.js
+      - name: 檢查 Render 後端 /health
+        env:
+          SERVER: ${{ inputs.server_url || vars.GAME_SERVER_URL }}
+        run: |
+          if [ -z "$SERVER" ]; then echo "::warning::未設定 GAME_SERVER_URL，略過後端檢查（線上對戰不可用）"; exit 0; fi
+          curl -fsS --max-time 30 --retry 8 --retry-delay 15 --retry-all-errors "${SERVER%/}/health"

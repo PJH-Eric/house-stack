@@ -14,4 +14,4 @@ services:
       - key: NODE_ENV
         value: production
       - key: GAME_ALLOWED_ORIGIN
-        sync: false # 在 Render 後台填入前端網址，例如 https://<帳號>.github.io
+        sync: false # 在 Render 後台填入前端網址，必須是 origin、不含路徑：https://pjh-eric.github.io
