@@ -7,7 +7,10 @@
  */
 'use strict';
 const { launch } = require('./browser.js');
+const fs = require('fs');
+const path = require('path');
 const BASE = process.env.BASE || 'http://localhost:3090/';
+const OUT = process.env.OUT;
 const SIZES = { 'phone-xs': [320, 640], 'phone-p': [390, 844], 'phone-l': [844, 390], 'tablet-p': [820, 1180], 'tablet-l': [1180, 820], desktop: [1440, 900] };
 
 function auditPage() {
@@ -47,10 +50,27 @@ function auditPage() {
     if (!inScroll && (r.right > vw + 1 || r.left < -1 || r.bottom > vh + 1 || r.top < -1)) out.push(`超出視窗：${el.className} ${el.textContent.trim().slice(0, 12)} [${el.getAttribute('aria-label') || ''}] ${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.right)},${Math.round(r.bottom)}`);
     if (r.height < 30 && !el.classList.contains('btn-xs')) out.push(`命中區過小：${el.className} h=${Math.round(r.height)}`);
   }
+  if (document.querySelector('.game') && (vw <= 600 || (vh <= 520 && vw > vh))) {
+    const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect();
+    const overlaps = (a, b) => a && b &&
+      Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2 &&
+      Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+    const header = ['.tb-left', '.tb-center', '.tb-right', '.gear-wrap'];
+    for (let i = 0; i < header.length; i++) for (let j = i + 1; j < header.length; j++) {
+      if (overlaps(rect(header[i]), rect(header[j]))) out.push(`手機工具列重疊：${header[i]} / ${header[j]}`);
+    }
+    const status = rect('.stage-status'), hud = rect('.hud-bl'), wind = rect('.wind-chip'), drop = rect('.drop-btn');
+    if (overlaps(hud, wind)) out.push('手機樓層／愛心與風力重疊');
+    if (status && (status.left < 0 || status.right > vw + 1 || status.bottom > vh + 1)) out.push('手機狀態列超出可視範圍');
+    if (overlaps(status, drop)) out.push('手機狀態列遮住放下按鈕');
+    if (hud && hud.height > 46) out.push(`手機 HUD 未收成橫排：h=${Math.round(hud.height)}`);
+    if (drop && drop.height < 48) out.push('手機放下按鈕命中區不足 48px');
+  }
   return out;
 }
 
 (async () => {
+  if (OUT) fs.mkdirSync(OUT, { recursive: true });
   const b = await launch(); let bad = 0; const sum = [];
   const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
   for (const [key, [w, h]] of Object.entries(SIZES)) {
@@ -59,7 +79,14 @@ function auditPage() {
     const p = await ctx.newPage();
     const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     await p.goto(BASE + (process.env.LANG_CODE ? '?lang=' + process.env.LANG_CODE : '')); await p.waitForTimeout(500);
-    const check = async (label) => { await p.waitForTimeout(350); await p.waitForFunction(() => !document.getAnimations().some((x) => x.playState === 'running' && x.effect && x.effect.getTiming().iterations !== Infinity), null, { timeout: 4000 }).catch(() => {}); const r = await p.evaluate(auditPage); r.forEach((x) => { bad++; console.log(`✘ [${key}] ${label}: ${x}`); }); sum.push(`${key}/${label}:${r.length ? 'NG' : 'ok'}`); };
+    const check = async (label) => {
+      await p.waitForTimeout(350);
+      await p.waitForFunction(() => !document.getAnimations().some((x) => x.playState === 'running' && x.effect && x.effect.getTiming().iterations !== Infinity), null, { timeout: 4000 }).catch(() => {});
+      const r = await p.evaluate(auditPage);
+      r.forEach((x) => { bad++; console.log(`✘ [${key}] ${label}: ${x}`); });
+      sum.push(`${key}/${label}:${r.length ? 'NG' : 'ok'}`);
+      if (OUT) await p.screenshot({ path: path.join(OUT, `${process.env.LANG_CODE || 'zh-Hant'}-${key}-${label}.png`) });
+    };
     await check('首頁');
     await p.click('.gear-btn'); await check('設定彈窗'); await p.keyboard.press('Escape');
     await p.evaluate(() => window.__app.go('setup', { mode: 'solo' })); await check('單人設定');
@@ -68,23 +95,41 @@ function auditPage() {
     await p.evaluate(() => window.__app.go('lobby')); await p.waitForTimeout(700); await check('大廳');
     await p.click('.lobby-actions .btn:not(.autofocus)'); await p.waitForSelector('.modal', { timeout: 4000 }).catch(() => {}); await check('建立房間彈窗'); await p.keyboard.press('Escape'); await p.waitForTimeout(300);
     await p.click('.lobby-actions .autofocus'); await p.waitForSelector('.room-page', { timeout: 8000 }).catch(() => {}); await p.waitForTimeout(600); await check('房間'); // 快速加入 → 房間頁
+    if (await p.$('.room-page')) await p.click('.room-page [data-back]');
     await p.evaluate(() => window.__app.go('home')); await p.waitForTimeout(500);
-    await p.evaluate(() => window.__app.go('game', { kind: 'local', mode: 'versus', diff: 'normal', players: [{ id: 'me', name: 'Eric', kind: 'human' }, { id: 'ai1', name: '電腦1', kind: 'ai', ai: 'hard' }], lives: 2, setupMode: 'vs' }));
-    await p.waitForTimeout(1200); await check('對局');
+    await p.evaluate(() => window.__app.go('game', { kind: 'local', mode: 'versus', diff: 'normal', turnLimit: 15, players: [{ id: 'me', name: 'Eric', kind: 'human' }, { id: 'ai1', name: '電腦1', kind: 'ai', ai: 'hard' }], lives: 2, setupMode: 'vs' }));
+    await p.waitForTimeout(1200);
+    await p.evaluate(() => {
+      const d = window.__app.app.screen.debug;
+      d.S.paused = true; // 版面巡檢期間凍結回合，不讓截圖耗時觸發自動放下。
+      const render = d.board.render.bind(d.board);
+      let last = 0;
+      d.board.render = () => { // 限制軟體 WebGL 重繪頻率，保留原本的狀態與輸入迴圈。
+        const now = performance.now();
+        if (now - last >= 100) { last = now; render(); }
+      };
+    });
+    await check('對局');
     await p.click('.info-btn'); await p.waitForTimeout(1200); await check('對局(資訊欄切換後)');
     if (await p.evaluate(() => document.querySelector('.game').classList.contains('panel-open'))) await p.click('.side-head .icon-btn');
     await p.waitForTimeout(400);
     await p.click('.menu-btn'); await check('暫停選單'); await p.keyboard.press('Escape');
+    await p.evaluate(() => { window.__app.app.screen.debug.S.paused = true; });
     await p.click('.info-btn'); await p.waitForTimeout(1200); await check('對局(資訊欄展開)');
     if (await p.evaluate(() => document.querySelector('.game').classList.contains('panel-open'))) await p.click('.side-head .icon-btn');
     await p.waitForTimeout(300);
-    await p.evaluate(() => { window.__app.app.screen.debug.board.currentD = () => 4.4; }); // 人類故意放到沒接到，盡快走到結算
+    await p.evaluate(() => { const d = window.__app.app.screen.debug; d.S.paused = false; d.board.currentD = () => 4.4; }); // 恢復實際流程；人類故意放到沒接到，盡快走到結算。
     for (let i = 0; i < 90 && !(await p.$('.result')); i++) {
       const t = await p.evaluate(() => document.querySelector('.turn-banner')?.textContent || '');
       if (/輪到你|你的回合|Your turn|轮到你/.test(t)) await p.keyboard.press('Space'); // 各語言的「輪到你」橫幅
       await p.waitForTimeout(1200);
     }
-    if (await p.$('.result')) await check('結算 overlay'); else { bad++; console.log(`✘ [${key}] 沒有出現結算`); }
+    if (await p.$('.result')) {
+      await check('結算 overlay');
+      await p.click('.res-actions .btn-primary');
+      await p.waitForFunction(() => !document.querySelector('.result') && window.__app.app.screen.debug.S.canAct);
+      await check('再來一局');
+    } else { bad++; console.log(`✘ [${key}] 沒有出現結算`); }
     if (errs.length) { bad++; console.log(`✘ [${key}] 頁面錯誤：${errs.join(';')}`); }
     await ctx.close();
   }

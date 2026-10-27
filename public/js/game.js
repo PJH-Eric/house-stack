@@ -149,7 +149,8 @@ export function GameScreen(cfg) {
   const btnDrop = Btn({ ico: 'drop', label: t('放下'), kind: 'primary', size: 'lg', keycap: t('空白'), onClick: () => drop(), cls: 'drop-btn' });
   const controls = h('div', { class: 'controls' }, btnDrop);
   const specBar = h('div', { class: 'spec-bar' }, icon('eye', 18), h('span', null, t('觀戰中')));
-  const view = h('div', { class: 'stage-view' }, canvas, popLayer, topbar, hudBL, windChip);
+  const statusbar = h('div', { class: 'stage-status' }, hudBL, windChip);
+  const view = h('div', { class: 'stage-view' }, canvas, popLayer, topbar, statusbar);
   const stage = h('main', { class: 'stage' }, view, S.role === 'spectator' ? specBar : controls, live);
   const root = h('div', { class: 'game' + (matchMedia('(min-width: 900px)').matches ? ' panel-open' : '') }, aside, stage);
 

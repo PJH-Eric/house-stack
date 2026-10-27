@@ -451,3 +451,80 @@ html[lang="en"] .logo-blk { width: auto; min-width: 40px; height: 46px; padding:
 .seat-ai .row-select .sel, .seat-ai .sel { width: auto; flex: 1 1 150px; max-width: none; }
 /* 窄版結算層蓋過右上角語言／設定鈕，避免壓在標題上（結算層內已有三個動作鈕） */
 @media (max-width: 560px) { body:has(.result) .gear-wrap { z-index: 20; } }
+
+/* 手機對局：工具與回合提示分列，樓層／愛心／風力收成橫向狀態列。 */
+.stage-status { display: contents; }
+@media (min-width: 601px) {
+  .has-latency .game .topbar { padding-right: calc(220px + var(--safe-r)); }
+  .has-latency .game .turn-banner { min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+}
+@media (max-width: 600px), (max-height: 520px) and (orientation: landscape) {
+  body:has(.game) .gear-wrap {
+    top: calc(10px + var(--safe-t)); width: auto; flex-wrap: nowrap; gap: 8px;
+  }
+  body:has(.game) .gear-wrap .latency { order: 0; }
+  body:has(.game) .gear-wrap .icon-btn, .game .tb-left .btn, .game .menu-btn {
+    width: 48px; height: 48px; min-height: 48px; flex: none;
+  }
+  .game .tb-left { gap: 8px; }
+  .game .tb-left .info-btn { padding: 0; }
+  .game .tb-left .btn-label { display: none; }
+  .game .turn-banner {
+    min-width: 0; white-space: normal; overflow: visible; text-overflow: clip;
+    padding: 6px 8px; font-size: .8125rem; line-height: 1.25; letter-spacing: 0;
+    overflow-wrap: anywhere;
+  }
+  .game .turn-timer { flex: none; min-width: 32px; font-variant-numeric: tabular-nums; }
+  .stage-status {
+    position: absolute; left: calc(10px + var(--safe-l)); right: calc(10px + var(--safe-r));
+    bottom: 10px; z-index: 4; display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 6px; pointer-events: none;
+  }
+  .stage-status .hud-bl { position: static; align-items: center; gap: 6px; }
+  .stage-status .hud-col {
+    flex-direction: row; gap: 4px; padding: 3px 7px; border: 2px solid #fff;
+    border-radius: 12px; background: rgba(246,251,255,.96); box-shadow: 0 2px 0 rgba(18,43,87,.3);
+  }
+  .stage-status .hud-tower { display: block; }
+  .stage-status .hud-tower svg { display: block; width: 14px; height: 28px; }
+  .stage-status .hud-chip { min-width: 24px; padding: 0; border: 0; background: none; box-shadow: none; }
+  .stage-status .hud-chip b { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+  .stage-status .hud-hearts { padding: 5px; border-width: 2px; box-shadow: 0 2px 0 rgba(18,43,87,.3); }
+  .stage-status .hud-hearts .hearts { flex-direction: row; gap: 3px; }
+  .stage-status .hud-hearts .hearts .ico { width: 20px; height: 20px; padding: 3px; border-radius: 6px; }
+  .stage-status .wind-chip { position: static; gap: 4px; padding: 6px 8px; border-width: 2px; box-shadow: 0 2px 0 rgba(18,43,87,.3); }
+  .stage-status .wind-chip b { font-size: .8125rem; }
+  .stage-status .wind-arrow svg { width: 22px; height: 16px; }
+  .stage-status .wind-bars { display: none; }
+  .game .controls.idle { filter: none; }
+  .game .drop-btn:disabled {
+    opacity: 1; color: #385779; text-shadow: none; background: linear-gradient(#d5e2f2, #adc2dd);
+    border-color: #597394; box-shadow: 0 4px 0 #597394, inset 0 2px 0 rgba(255,255,255,.4);
+  }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .game .topbar {
+    display: grid; grid-template-columns: minmax(64px, .36fr) minmax(0, 1fr);
+    gap: 10px 8px; padding: calc(10px + var(--safe-t)) calc(10px + var(--safe-r)) 0 calc(10px + var(--safe-l));
+  }
+  .game .tb-left { grid-column: 1 / -1; grid-row: 1; justify-self: start; }
+  .game .tb-right { grid-column: 1; grid-row: 2; width: 100%; margin: 0; order: 0; }
+  .game .star-ico { flex: none; margin-right: -9px; }
+  .game .star-ico svg { display: block; width: 30px; height: 30px; }
+  .game .tb-right .stab.mini { flex: 1; min-width: 0; width: auto; height: 14px; }
+  .game .tb-center { grid-column: 2; grid-row: 2; gap: 6px; order: 0; }
+  .game .turn-banner { flex: 1; }
+  .game .controls {
+    padding: 8px calc(10px + var(--safe-r)) calc(10px + var(--safe-b)) calc(10px + var(--safe-l));
+    border-top-width: 2px;
+  }
+  .game .drop-btn { width: 100%; max-width: none; min-height: 56px; border-radius: 14px; }
+  .game .drop-btn .keycap { display: none; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .game .topbar { padding-top: calc(10px + var(--safe-t)); padding-right: calc(130px + var(--safe-r)); }
+  .has-latency .game .topbar { padding-right: calc(220px + var(--safe-r)); }
+  .game .tb-right .stab.mini { width: 90px; }
+  .game .star-ico svg { width: 30px; height: 30px; }
+  .stage-status { right: calc(220px + var(--safe-r)); bottom: calc(12px + var(--safe-b)); }
+}
