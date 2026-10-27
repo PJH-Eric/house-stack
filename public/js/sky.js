@@ -269,7 +269,7 @@ export class SkyDirector {
       flock.position.set(-dir * 75, camY + rand(-7, 12), -rand(22, 62)); flock.userData = { kind, dir, speed: rand(4.5, 7), birds, t: 0 };
       this.scene.add(flock); this.pools.bird.push(flock);
     } else if (kind === 'heli') {
-      const h = this.makeHeli(); h.rotation.y = dir > 0 ? Math.PI : 0; // 機頭朝行進方向（模型機頭為 +x）
+      const h = this.makeHeli(); h.rotation.y = dir > 0 ? 0 : Math.PI; // 機頭朝行進方向（模型機頭為 +x）
       h.position.set(-dir * 48, camY + rand(-6, 10), -rand(26, 52)); h.userData.kind = kind; h.userData.dir = dir; h.userData.speed = rand(4.5, 6.5);
       this.scene.add(h); this.pools.heli.push(h);
     } else {
