@@ -13,7 +13,12 @@ src = os.path.join(ROOT, 'public', 'js', 'locales.js')
 with tempfile.TemporaryDirectory() as d:
     tmp = os.path.join(d, 'l.mjs')
     open(tmp, 'w', encoding='utf8').write(open(src, encoding='utf8').read())
-    out = subprocess.check_output(['node', '-e', "import(process.argv[1]).then(m=>console.log(JSON.stringify(Object.keys(m.EN))))", tmp])
+    expression = (
+        "import('node:url')"
+        ".then(({pathToFileURL}) => import(pathToFileURL(process.argv[1]).href))"
+        ".then(m => console.log(JSON.stringify(Object.keys(m.EN))))"
+    )
+    out = subprocess.check_output(['node', '-e', expression, tmp])
 keys = json.loads(out)
 cc = opencc.OpenCC('tw2sp')
 lines = ['/* 简体中文（由 scripts/gen-hans.py 以 OpenCC tw2sp 產生，請勿手改；用語調整寫在該腳本的 OVERRIDES）。 */', 'export const HANS = {']
