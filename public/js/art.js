@@ -278,15 +278,23 @@ export class Board {
     this.guideGroup.visible = false; s.add(this.guideGroup);
 
     // 粒子池（落地灰塵）
-    const dustGeo = new THREE.SphereGeometry(0.28, 8, 6);
-    for (let i = 0; i < 28; i++) {
-      const m = new THREE.Mesh(dustGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }));
+    const puff = document.createElement('canvas'); puff.width = puff.height = 64;
+    { const x = puff.getContext('2d'), g = x.createRadialGradient(32, 32, 2, 32, 32, 31); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(0.55, 'rgba(255,255,255,.45)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); }
+    const puffTex = new THREE.CanvasTexture(puff);
+    for (let i = 0; i < 40; i++) {
+      const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, color: 0xf4efe6, transparent: true, opacity: 0, depthWrite: false }));
       m.visible = false; s.add(m); this.particles.push({ m, life: 0, vx: 0, vy: 0, vz: 0, kind: 'dust' });
+    }
+    // 落地衝擊波圈
+    const ringGeo = new THREE.RingGeometry(0.62, 0.8, 40); this.rings = [];
+    for (let i = 0; i < 4; i++) {
+      const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2; m.visible = false; s.add(m); this.rings.push({ m, life: 0, max: 0.5, size: 1 });
     }
     // 完美落地的金色星星（參考圖：樓層兩側噴出星星與白煙）
     const sh = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 0.28 : 0.7, a = Math.PI / 2 + i * Math.PI / 5; i ? sh.lineTo(Math.cos(a) * r, Math.sin(a) * r) : sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
     const starGeo = new THREE.ShapeGeometry(sh); this.starFx = [];
-    for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(starGeo, new THREE.MeshBasicMaterial({ color: 0xffd23c, side: THREE.DoubleSide, transparent: true })); m.visible = false; s.add(m); this.starFx.push({ m, life: 0, v: new THREE.Vector3() }); }
+    for (let i = 0; i < 16; i++) { const m = new THREE.Mesh(starGeo, new THREE.MeshBasicMaterial({ color: 0xffd23c, side: THREE.DoubleSide, transparent: true })); m.visible = false; s.add(m); this.starFx.push({ m, life: 0, v: new THREE.Vector3() }); }
     const confGeo = new THREE.PlaneGeometry(0.4, 0.25);
     this.confetti = [];
     for (let i = 0; i < 90; i++) {
@@ -484,7 +492,7 @@ export class Board {
     for (const p of this.particles) {
       if (p.life > 0) continue;
       p.life = 0.7 + Math.random() * 0.3; p.m.visible = true; p.m.position.set(x + rand(-1, 1) * spread, y, z + rand(-1, 1) * spread);
-      p.vx = rand(-1, 1) * 2.2; p.vz = rand(-1, 1) * 2.2; p.vy = rand(0.6, 2.2); p.m.scale.setScalar(rand(0.6, 1.2)); p.m.material.opacity = 0.8;
+      p.vx = rand(-1, 1) * 2.2; p.vz = rand(-1, 1) * 2.2; p.vy = rand(0.6, 2.2); p.m.scale.setScalar(rand(1.0, 1.9)); p.m.material.opacity = 0.8;
       if (++k >= n) break;
     }
   }
@@ -495,10 +503,16 @@ export class Board {
       if (f.life > 0) continue;
       const side = k % 2 ? 1 : -1;
       f.life = 0.9 + Math.random() * 0.3; f.m.visible = true; f.m.position.set(x + side * this.cfg.size * 0.55, y, z + 0.8);
-      f.v.set(side * rand(2.5, 5), rand(1, 4), rand(0, 1)); f.m.scale.setScalar(rand(0.8, 1.3));
-      if (++k >= 6) break;
+      f.v.set(side * rand(2.5, 5), rand(1, 4), rand(0, 1)); f.base = rand(0.8, 1.3); f.m.scale.setScalar(f.base);
+      if (++k >= 10) break;
     }
+    this.spawnRing(x, this.altitude - FH * 0.45, z, 0xffd23c, this.cfg.size * 1.5);
     this.spawnDust(x - this.cfg.size * 0.5, y, z + 0.5, 3, 0.4); this.spawnDust(x + this.cfg.size * 0.5, y, z + 0.5, 3, 0.4);
+  }
+  spawnRing(x, y, z, color = 0xffffff, size = 4) {
+    if (this.reduceMotion) return;
+    const r = this.rings.find((q) => q.life <= 0); if (!r) return;
+    r.life = r.max = 0.55; r.size = size; r.m.visible = true; r.m.position.set(x, y, z); r.m.material.color.set(color); r.m.scale.setScalar(0.3);
   }
   burstConfetti(x, y, z, n = 90) {
     if (this.reduceMotion) return;
@@ -636,13 +650,18 @@ export class Board {
     for (const p of this.particles) {
       if (p.life <= 0) continue; p.life -= dt;
       p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.vy -= 3 * dt;
-      p.m.scale.multiplyScalar(1 + dt * 1.6); p.m.material.opacity = Math.max(0, p.life) * 0.9;
+      p.m.scale.multiplyScalar(1 + dt * 1.6); p.m.material.opacity = Math.min(0.75, Math.max(0, p.life) * 0.9);
       if (p.life <= 0) p.m.visible = false;
     }
     for (const f of this.starFx) {
       if (f.life <= 0) continue; f.life -= dt;
-      f.m.position.addScaledVector(f.v, dt); f.v.y -= 4 * dt; f.m.rotation.z += dt * 4; f.m.material.opacity = Math.min(1, f.life * 2.5);
+      f.m.position.addScaledVector(f.v, dt); f.v.y -= 4 * dt; f.m.rotation.z += dt * 4; f.m.material.opacity = Math.min(1, f.life * 2.5); f.m.scale.setScalar(f.base * (0.85 + 0.3 * Math.sin(f.life * 22)));
       if (f.life <= 0) f.m.visible = false;
+    }
+    for (const r of this.rings) {
+      if (r.life <= 0) continue; r.life -= dt; const k = 1 - Math.max(0, r.life) / r.max;
+      r.m.scale.setScalar(0.3 + r.size * (1 - (1 - k) * (1 - k))); r.m.material.opacity = (1 - k) * 0.7;
+      if (r.life <= 0) r.m.visible = false;
     }
     for (const c of this.confetti) {
       if (c.life <= 0) continue; c.life -= dt;
@@ -681,7 +700,8 @@ export class Board {
       const strength = clamp(0.5 + Math.abs(res.off) * 0.15, 0.4, 1);
       this.shake = res.toppled ? 0.7 : (res.perfect ? 0.18 : 0.35);
       this.jolt += res.toppled ? 0.35 : (res.perfect ? 0.04 : 0.12 + Math.abs(res.off) * 0.05);
-      this.spawnDust(p.x, y0 + 0.1, p.z, res.perfect ? 4 : 9, this.cfg.size * 0.45);
+      this.spawnDust(p.x, y0 + 0.1, p.z, res.perfect ? 5 : 11, this.cfg.size * 0.45);
+      if (!res.perfect) this.spawnRing(p.x, y0 + 0.08, p.z, res.toppled ? 0xff8a7a : 0xfff4dc, this.cfg.size * (res.toppled ? 1.8 : 1.1));
       a.cb.onImpact && a.cb.onImpact(strength);
       if (res.perfect) { this.spawnStars(p.x, this.altitude - FH * 0.3, p.z); this.burstConfetti(p.x, this.altitude + 0.5, p.z, 10); a.cb.onPerfect && a.cb.onPerfect({ x: p.x, y: this.altitude + 0.6, z: p.z }); }
       this.afterTowerChange(false);

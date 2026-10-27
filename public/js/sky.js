@@ -108,12 +108,36 @@ export class SkyDirector {
     this.onStage = null; this.onThunder = null; this.reduceMotion = false;
     this.bgColor = new THREE.Color(); this.fogColor = new THREE.Color();
     this.rig = new THREE.Group(); scene.add(this.rig);
-    this.buildStars(); this.buildSun(); this.buildEarth(); this.buildPlanets(); this.buildClouds(); this.buildRain(); this.buildBolt(); this.buildWindLines();
+    this.buildDome(); this.buildMountains(); this.buildStars(); this.buildSun(); this.buildEarth(); this.buildPlanets(); this.buildClouds(); this.buildRain(); this.buildBolt(); this.buildWindLines();
     this.pools = { bird: [], heli: [], plane: [] };
     this.timers = { bird: 2, heli: 6, plane: 5 };
   }
 
   /* ---------- 相機掛載的背景 ---------- */
+  // 漸層天穹：天頂偏深、地平線偏亮偏暖，取代單色背景
+  buildDome() {
+    this.domeMat = new THREE.ShaderMaterial({
+      uniforms: { top: { value: new THREE.Color() }, bottom: { value: new THREE.Color() }, glow: { value: new THREE.Color(0xffe2b0) }, glowK: { value: 0 } },
+      vertexShader: 'varying float vY; void main(){ vY = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform vec3 top; uniform vec3 bottom; uniform vec3 glow; uniform float glowK; varying float vY; void main(){ float k = pow(smoothstep(-0.08, 0.7, vY), 0.75); vec3 c = mix(bottom, top, k); c += glow * glowK * exp(-abs(vY) * 7.0); gl_FragColor = vec4(c, 1.0);\n#include <colorspace_fragment>\n}',
+      side: THREE.BackSide, depthTest: false, depthWrite: false, fog: false,
+    });
+    this.dome = new THREE.Mesh(new THREE.SphereGeometry(2200, 32, 16), this.domeMat);
+    this.dome.renderOrder = -120; this.dome.frustumCulled = false; this.rig.add(this.dome);
+  }
+  // 遠山：兩層霧藍山脊，只在低空看得到
+  buildMountains() {
+    this.ridges = [];
+    [[560, 78, 3, 0.55], [460, 56, 9, 0.8]].forEach(([R, H, seed, shade]) => {
+      const tex = canvasTex(1024, 128, (x, w, h) => {
+        const r = seeded(seed), ph = [r() * 6, r() * 6, r() * 6]; x.fillStyle = '#fff'; x.beginPath(); x.moveTo(0, h);
+        for (let i = 0; i <= w; i += 4) { const u = i / w * Math.PI * 2; const y = h * (0.45 + 0.22 * Math.sin(u * 3 + ph[0]) + 0.14 * Math.sin(u * 7 + ph[1]) + 0.07 * Math.sin(u * 17 + ph[2])); x.lineTo(i, h - y); }
+        x.lineTo(w, h); x.closePath(); x.fill();
+      });
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 96, 1, true), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.BackSide, fog: false, depthWrite: false }));
+      m.position.y = H / 2 - 4; m.renderOrder = -70; m.frustumCulled = false; this.scene.add(m); this.ridges.push({ m, shade });
+    });
+  }
   buildStars() {
     const N = 1500, p = new Float32Array(N * 3), r = seeded(5);
     for (let i = 0; i < N; i++) { const a = r() * 6.28, e = Math.asin(r() * 2 - 1), R = 3000; p[i * 3] = Math.cos(a) * Math.cos(e) * R; p[i * 3 + 1] = Math.sin(e) * R; p[i * 3 + 2] = Math.sin(a) * Math.cos(e) * R; }
@@ -314,6 +338,10 @@ export class SkyDirector {
     this.rain += (storm - this.rain) * Math.min(1, dt * 2);
     this.bgColor.lerp(new THREE.Color(0x71819a), 0.5 * this.rain); this.fogColor.lerp(new THREE.Color(0x8d9ab0), 0.5 * this.rain);
     this.scene.background.copy(this.bgColor); this.scene.fog.color.copy(this.fogColor);
+    { const d = this.domeMat.uniforms; d.top.value.copy(this.bgColor).multiplyScalar(0.8); d.bottom.value.copy(this.fogColor);
+      d.glowK.value = 0.22 * clamp(1 - n / 90, 0, 1) * (1 - this.rain);
+      const hz = clamp(1 - n / 55, 0, 1) * (1 - 0.6 * this.rain);
+      for (const r of this.ridges) { r.m.visible = hz > 0.01; r.m.material.opacity = hz * 0.9; r.m.material.color.copy(this.fogColor).lerp(new THREE.Color(0x5f84ad), r.shade * 0.7); } }
     const f0 = clamp((n - 50) / 60, 0, 1); this.scene.fog.near = lerp(70, 1800, f0); this.scene.fog.far = lerp(230, 9000, f0);
     this.flash = Math.max(0, this.flash - dt);
     const fl = this.flash > 0 ? Math.sin(this.flash / 0.42 * Math.PI * 3) ** 2 * 1.3 : 0;
