@@ -16,9 +16,9 @@ async function test(name, fn) {
     const run = () => { const g = mk(); const out = []; for (const d of [0, 0.5, -1.2, 0.1, 2.2, 0]) { const r = g.drop({ d }); out.push(r && [r.placed.x, r.placed.z, r.toppled, r.fallFrom]); } return JSON.stringify([out, g.publicState().floors]); };
     assert.strictEqual(run(), run());
   });
-  await test('完美放置：偏移在容許內會吸附並累積連擊與加分', () => {
+  await test('完美放置：偏移在容許內只吸附一部分並累積連擊與加分', () => {
     const g = mk();
-    const r1 = g.drop({ d: 0.1 }); assert.ok(r1.perfect && r1.placed.x === 0 && r1.placed.z === 0 && r1.combo === 1);
+    const r1 = g.drop({ d: 0.1 }); assert.ok(r1.perfect && Math.abs(r1.placed.x - 0.1 * T.SNAP_KEEP) < 1e-9 && r1.placed.z === 0 && r1.combo === 1);
     const r2 = g.drop({ d: -0.1 }); assert.ok(r2.perfect && r2.combo === 2 && r2.gain > r1.gain, '連擊加分遞增');
     assert.strictEqual(g.height(), 3);
   });
@@ -174,10 +174,10 @@ async function test(name, fn) {
     const sw = g.swingSpec; assert.strictEqual(sw.space, true); assert.strictEqual(sw.mag, T.MAG.normal);
     assert.strictEqual(sw.wind, 0, '太空無風');
     const r = g.drop({ d: 1.0 });
-    assert.ok(Math.abs(r.off - 1.0 * (1 - T.MAG.normal)) < 1e-9, '偏移被吸向中心 40%');
+    assert.ok(Math.abs(r.off - 1.0 * (1 - T.MAG.normal)) < 1e-9, '偏移被吸向中心 20%');
     const g2 = T.createGame({ seed: 4, difficulty: 'normal', irregular: false, wind: false, spaceFloors: 8 });
     for (let i = 0; i < 7; i++) g2.drop({ d: 0 });
-    assert.ok(g2.drop({ d: 0.4 }).perfect, '0.4 × 0.6 = 0.24 ≤ 容許 0.27 → 完美');
+    assert.ok(g2.drop({ d: 0.3 }).perfect, '0.3 × 0.8 = 0.24 ≤ 容許 0.27 → 完美');
     assert.strictEqual(T.SPACE_FLOORS, 140);
   });
   await test('電腦在太空與不規則樓層下仍能正常蓋樓（困難：50 層內不會全倒）', () => {

@@ -591,7 +591,7 @@ export class Board {
       const perfect = Math.abs(eff) <= this.cfg.tol;
       const fw = this.cfg.size * ((sw.look && sw.look.w) || 1), gb = this.guideBars; // 輔助框跟著這層樓的寬度
       gb[0].scale.x = fw; gb[1].scale.x = fw; gb[2].position.x = fw / 2; gb[3].position.x = -fw / 2;
-      this.guideGroup.position.set(top.x + (perfect ? 0 : eff), topY, hp.z); // 預測落點：已算入風的吹移
+      this.guideGroup.position.set(top.x + (perfect ? eff * R.SNAP_KEEP : eff), topY, hp.z); // 預測落點：已算入風的吹移
       this.guideMat.color.set(perfect ? 0x35e08a : 0xffffff);
       this.guideBeam.scale.y = 5.2; this.guideBeam.position.y = 2.6; this.guideBeam.visible = false;
     }

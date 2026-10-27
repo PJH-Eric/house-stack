@@ -21,8 +21,10 @@
   const SKY_FLOORS = Infinity; // 預設沒有樓層上限，背景一路換到太空與銀河；測試或特殊規則可用 createGame({ maxFloors })
   const PALETTE_COUNT = 12;
   const SPACE_FLOORS = 140; // 到達這個高度進入太空：沒有風，改為無重力（磁吸 + 漂浮）
+  /** 完美對齊：偏移在容許內仍判完美，但只被吸回一部分，保留這個比例的偏移 */
+  const SNAP_KEEP = 0.5;
   /** 太空磁吸：放下偏移被磁力往中心拉回的比例（依難度） */
-  const MAG = { kids: 0.6, easy: 0.5, normal: 0.4, hard: 0.3, mythic: 0.2 };
+  const MAG = { kids: 0.3, easy: 0.25, normal: 0.2, hard: 0.15, mythic: 0.1 };
   /** 不規則樓層：寬度／高度的最大變化幅度（第 5 層起，約 30 層內逐漸增加到最大） */
   const IRR = { kids: { w: 0.3, h: 0.25 }, easy: { w: 0.4, h: 0.3 }, normal: { w: 0.55, h: 0.35 }, hard: { w: 0.65, h: 0.4 }, mythic: { w: 0.7, h: 0.45 } };
   const VARIANT_COUNT = 4;
@@ -215,7 +217,7 @@
       let off = dd + drift, perfect = false;
       const mag = g.swingSpec ? g.swingSpec.mag || 0 : 0; // 太空磁吸：偏移被拉回中心一部分
       if (mag) off *= 1 - mag;
-      if (Math.abs(off) <= D.tol) { off = 0; perfect = true; }
+      if (Math.abs(off) <= D.tol) { off *= SNAP_KEEP; perfect = true; }
       const look = g.swingSpec ? g.swingSpec.look : null;
       const nf = { x: top.x + (ax === 'x' ? off : 0), z: top.z + (ax === 'z' ? off : 0), w: look && look.w || 1, h: look && look.h || 1 };
       return { nf, perfect, d: dd, off, axis: ax, drift, mag };
@@ -350,6 +352,6 @@
 
   return {
     TURN_LIMITS, turnSecFor, FLOOR_H, SKY_FLOORS, PALETTE_COUNT, VARIANT_COUNT, DIFFICULTIES, mulberry32, createGame,
-    swingPos, timeToReach, evaluate, axisFor, clamp, windBase, WIND, SPACE_FLOORS, MAG, IRR, shapeFor,
+    swingPos, timeToReach, evaluate, axisFor, clamp, windBase, WIND, SPACE_FLOORS, MAG, SNAP_KEEP, IRR, shapeFor,
   };
 });
