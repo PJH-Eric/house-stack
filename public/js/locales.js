@@ -340,8 +340,6 @@ export const EN = {
   "每回合限時": "Turn timer",
   "{n} 秒": "{n} s",
   "時間到會自動在吊車目前的位置放下，可能因此放偏。": "When time runs out the floor drops automatically from the crane's current position, so it may land off-target.",
-  "預設：單人不限時": "Default: no time limit in solo",
-  "預設：依難度 {sec} 秒": "Default: {sec} s per turn, set by difficulty",
   "每回合限時：{v}": "Turn timer: {v}",
   "回遊戲大廳": "Back to Game Lobby",
   "線上暫時無法連線": "Online unavailable",

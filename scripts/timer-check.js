@@ -1,4 +1,4 @@
-/* 每回合限時：單人設 5 秒 → 顯示倒數、逾時自動放下、暫停時倒數停住；預設單人不顯示倒數；設定頁可選。 */
+/* 每回合限時：單人設 5 秒 → 顯示倒數、逾時自動放下、暫停時倒數停住；預設 10 秒；設定頁可選 5／10／15。 */
 'use strict';
 const { launch } = require('./browser.js');
 const BASE = process.env.BASE || 'http://localhost:3090/';
@@ -10,10 +10,10 @@ const cfg = (turnLimit) => ({ kind: 'local', mode: 'solo', diff: 'easy', players
   await p.goto(BASE); await p.waitForTimeout(500);
   // 設定頁
   await p.evaluate(() => window.__app.go('setup', { mode: 'solo' })); await p.waitForTimeout(500);
-  ok(/每回合限時/.test(await p.locator('.page').innerText()) && /單人不限時/.test(await p.locator('.page').innerText()), '單人設定頁有「每回合限時」且預設說明為不限時');
-  // 預設：沒有倒數
-  await p.evaluate((c) => window.__app.go('game', c), cfg(0)); await p.waitForSelector('.game'); await p.waitForTimeout(2500);
-  ok((await p.locator('.turn-timer').innerText()) === '', '預設單人不顯示倒數');
+  ok(/每回合限時/.test(await p.locator('.page').innerText()) && /10 秒/.test(await p.locator('.page').innerText()), '單人設定頁有「每回合限時」且預設為 10 秒');
+  // 預設：10 秒倒數
+  await p.evaluate((c) => window.__app.go('game', c), cfg(0)); await p.waitForSelector('.game'); await p.waitForTimeout(1600);
+  ok((await p.evaluate(() => window.__app.app.screen.debug.S.sec)) === 10, '預設單人 10 秒倒數');
   // 5 秒
   await p.evaluate((c) => window.__app.go('game', c), cfg(5)); await p.waitForSelector('.game'); await p.waitForTimeout(1600);
   const t0 = parseInt(await p.locator('.turn-timer').innerText(), 10);
