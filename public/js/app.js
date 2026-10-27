@@ -99,9 +99,9 @@ function home() {
 /* ---------------- 開局設定（單人／對電腦） ---------------- */
 const SHAPE_OPTS = [{ value: 'off', label: t('一般（方正樓層）') }, { value: 'fixed', label: t('隨機一種形狀（整場相同）') }, { value: 'every', label: t('整場都不規則（每層不同）') }];
 const SHAPE_DESC = { off: t('每層都是標準大小。'), fixed: t('開局隨機決定一種寬窄高矮，整場每層都長這樣。'), every: t('每一層的寬窄高矮都不一樣，越高變化越大。') };
-const TURN_OPTS = R.TURN_LIMITS.map((n) => ({ value: String(n), label: n === 0 ? t('預設') : t('{n} 秒', { n }) }));
-const turnDesc = (mode, diff, limit) => (limit > 0 ? t('時間到會自動在吊車目前的位置放下，可能因此放偏。') : mode === 'solo' ? t('預設：單人不限時') : t('預設：依難度 {sec} 秒', { sec: R.DIFFICULTIES[diff].turnSec }));
-const setupMem = { diff: 'normal', ais: ['normal'], shapes: 'off', turnLimit: 0 };
+const TURN_OPTS = R.TURN_LIMITS.map((n) => ({ value: String(n), label: t('{n} 秒', { n }) }));
+const turnDesc = () => t('時間到會自動在吊車目前的位置放下，可能因此放偏。');
+const setupMem = { diff: 'normal', ais: ['normal'], shapes: 'off', turnLimit: R.DEFAULT_TURN_SEC };
 function setup({ mode }) {
   const solo = mode === 'solo';
   const nameTf = TextField({ value: ensureNick(), maxLength: 12, label: t('暱稱'), onInput: (v) => store.set({ nick: v.slice(0, 12) }) });
@@ -304,7 +304,7 @@ function lobby() {
     enterRoom(res);
   }
   function createDialog() {
-    let diff = 'normal', maxP = 4, shapes = 'off', turnLimit = 0;
+    let diff = 'normal', maxP = 4, shapes = 'off', turnLimit = R.DEFAULT_TURN_SEC;
     const m = Modal({
       title: t('建立房間'),
       body: [Select({ label: t('難度'), value: diff, options: DIFF_OPTS, onChange: (v) => { diff = v; } }),
@@ -411,8 +411,8 @@ function room() {
       isHost ? [Select({ label: t('難度'), value: v.settings.difficulty, options: DIFF_OPTS, onChange: (d) => net.emit('room:settings', { difficulty: d }) }),
         Stepper({ label: t('人數上限'), value: v.settings.maxPlayers, min: Math.max(2, seated.length), max: 4, onChange: (n) => net.emit('room:settings', { maxPlayers: n }) }),
         Select({ label: t('樓層形狀'), value: v.settings.shapes || 'off', options: SHAPE_OPTS, onChange: (d) => net.emit('room:settings', { shapes: d }) }),
-        Select({ label: t('每回合限時'), value: String(v.settings.turnLimit || 0), options: TURN_OPTS, onChange: (d) => net.emit('room:settings', { turnLimit: +d }) })]
-        : h('p', { class: 'muted' }, t('難度 {v0}・形狀 {label}・上限 {maxPlayers} 人（由房主設定）', { v0: diffLabel(v.settings.difficulty), label: (SHAPE_OPTS.find((o) => o.value === (v.settings.shapes || 'off')) || SHAPE_OPTS[0]).label, maxPlayers: v.settings.maxPlayers }), h('br'), t('每回合限時：{v}', { v: (TURN_OPTS.find((o) => o.value === String(v.settings.turnLimit || 0)) || TURN_OPTS[0]).label }))));
+        Select({ label: t('每回合限時'), value: String(v.settings.turnLimit || R.DEFAULT_TURN_SEC), options: TURN_OPTS, onChange: (d) => net.emit('room:settings', { turnLimit: +d }) })]
+        : h('p', { class: 'muted' }, t('難度 {v0}・形狀 {label}・上限 {maxPlayers} 人（由房主設定）', { v0: diffLabel(v.settings.difficulty), label: (SHAPE_OPTS.find((o) => o.value === (v.settings.shapes || 'off')) || SHAPE_OPTS[0]).label, maxPlayers: v.settings.maxPlayers }), h('br'), t('每回合限時：{v}', { v: (TURN_OPTS.find((o) => o.value === String(v.settings.turnLimit || R.DEFAULT_TURN_SEC)) || TURN_OPTS[0]).label }))));
     if (v.invite) {
       sideBox.append(sec(t('邀請朋友'),
         h('div', { class: 'inv-btns' }, Btn({ label: t('複製玩家連結'), ico: 'link', size: 'sm', onClick: () => copyText(inviteLink(v.id, v.invite.player), t('玩家邀請連結')) }), Btn({ label: t('複製觀戰連結'), ico: 'eye', size: 'sm', onClick: () => copyText(inviteLink(v.id, v.invite.spectator), t('觀戰邀請連結')) })),

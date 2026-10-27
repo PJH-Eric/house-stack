@@ -143,12 +143,12 @@
     return { fallFrom, maxRatio, ratios };
   }
 
-  /** 每回合限時（秒）：可選值；0 = 預設（單人不限時、對戰依難度的 turnSec）。 */
-  const TURN_LIMITS = [0, 5, 10, 15];
+  /** 每回合限時（秒）：只有 5／10／15 可選，預設 10（不合法值也回到 10）。 */
+  const TURN_LIMITS = [5, 10, 15];
+  const DEFAULT_TURN_SEC = 10;
   function turnSecFor(diffKey, mode, turnLimit) {
     const n = Math.floor(+turnLimit);
-    if (n > 0 && TURN_LIMITS.includes(n)) return n;
-    return mode === 'versus' ? (DIFFICULTIES[diffKey] || DIFFICULTIES.normal).turnSec : 0;
+    return TURN_LIMITS.includes(n) ? n : DEFAULT_TURN_SEC;
   }
 
   function createGame(opts) {
@@ -351,7 +351,7 @@
   }
 
   return {
-    TURN_LIMITS, turnSecFor, FLOOR_H, SKY_FLOORS, PALETTE_COUNT, VARIANT_COUNT, DIFFICULTIES, mulberry32, createGame,
+    TURN_LIMITS, DEFAULT_TURN_SEC, turnSecFor, FLOOR_H, SKY_FLOORS, PALETTE_COUNT, VARIANT_COUNT, DIFFICULTIES, mulberry32, createGame,
     swingPos, timeToReach, evaluate, axisFor, clamp, windBase, WIND, SPACE_FLOORS, MAG, SNAP_KEEP, IRR, shapeFor,
   };
 });

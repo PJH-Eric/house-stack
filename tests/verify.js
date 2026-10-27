@@ -219,7 +219,7 @@ async function test(name, fn) {
     assert.strictEqual(D.mythic.label, '神話');
     assert.strictEqual(T.createGame({ difficulty: 'mythic', mode: 'solo' }).players[0].lives, 1);
     assert.strictEqual(T.createGame({ difficulty: 'mythic', mode: 'versus', players: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] }).players[0].lives, 1);
-    assert.strictEqual(T.createGame({ difficulty: 'mythic', mode: 'versus' }).turnSec, 15, '對戰預設 15 秒');
+    assert.strictEqual(T.createGame({ difficulty: 'mythic', mode: 'versus' }).turnSec, 10, '對戰預設 10 秒');
     const g = T.createGame({ seed: 4, difficulty: 'mythic', mode: 'solo', lives: 3 }); for (let i = 0; i < 20 && !g.over; i++) g.drop({ d: 0 });
     assert.ok(g.floors.length > 1, '神話可正常放樓層');
   });
@@ -255,16 +255,16 @@ async function test(name, fn) {
     const st = rm.start(room, member.id); assert.ok(st.ok, JSON.stringify(st));
     assert.strictEqual(room.game.publicState().shapes, 'every');
   });
-  await test('每回合限時：預設（單人不限、對戰依難度）、可選秒數、亂填被擋；房間設定帶進對局', () => {
-    assert.strictEqual(T.createGame({ mode: 'solo' }).turnSec, 0, '單人預設不限時');
-    assert.strictEqual(T.createGame({ mode: 'versus', difficulty: 'hard' }).turnSec, T.DIFFICULTIES.hard.turnSec, '對戰預設依難度');
+  await test('每回合限時：只有 5/10/15、預設 10、亂填被擋；房間設定帶進對局', () => {
+    assert.strictEqual(T.createGame({ mode: 'solo' }).turnSec, 10, '單人預設 10 秒');
+    assert.strictEqual(T.createGame({ mode: 'versus', difficulty: 'hard' }).turnSec, 10, '對戰預設 10 秒');
     assert.strictEqual(T.createGame({ mode: 'solo', turnLimit: 10 }).turnSec, 10);
     assert.strictEqual(T.createGame({ mode: 'versus', turnLimit: 5 }).publicState().turnSec, 5);
-    for (const bad of [-3, NaN, 7, 8, 20, 1e9, '<b>', null]) assert.strictEqual(T.createGame({ mode: 'solo', turnLimit: bad }).turnSec, 0, '非法值回到預設：' + bad);
+    for (const bad of [-3, NaN, 7, 8, 20, 1e9, '<b>', null]) assert.strictEqual(T.createGame({ mode: 'solo', turnLimit: bad }).turnSec, 10, '非法值回到預設：' + bad);
     const rm = new RoomManager({ onEvent() {} });
     const { room, member } = rm.createRoom({ sid: 'h', name: 'Host', turnLimit: 10 });
     assert.strictEqual(room.settings.turnLimit, 10);
-    assert.strictEqual(rm.createRoom({ sid: 'x', name: 'X', turnLimit: 99 }).room.settings.turnLimit, 0);
+    assert.strictEqual(rm.createRoom({ sid: 'x', name: 'X', turnLimit: 99 }).room.settings.turnLimit, 10);
     assert.ok(rm.setSettings(room, member.id, { turnLimit: 15 })); assert.strictEqual(room.settings.turnLimit, 15);
     rm.setSettings(room, member.id, { turnLimit: 8 }); assert.strictEqual(room.settings.turnLimit, 15, '非法值忽略');
     const j = rm.join({ sid: 'g', name: 'G', roomId: room.id, token: room.tokens.player, role: 'player' });
