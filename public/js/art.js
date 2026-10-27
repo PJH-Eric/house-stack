@@ -157,7 +157,7 @@ export class Board {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(36, 1, 0.5, 9000);
-    this.cfg = { size: 4, ground: 8, amp: 4.4, tol: 0.3 };
+    this.cfg = { size: 4, ground: 8, amp: 4.4, tol: 0.3, snapKeep: 0.5 };
     this.entries = []; // {group, x, z, i}
     this.debris = [];
     this.particles = [];
@@ -318,7 +318,7 @@ export class Board {
   setConfig(gs) {
     if (this._detailGeo) for (const g of this._detailGeo.values()) g.dispose(); // 換局時釋放舊的幾何，避免越玩越多
     if (this._geoCache) for (const g of Object.values(this._geoCache)) g.dispose();
-    this.cfg = { size: gs.size, ground: gs.ground, amp: gs.amp, tol: gs.tol, shapes: gs.shapes || 'off' };
+    this.cfg = { size: gs.size, ground: gs.ground, amp: gs.amp, tol: gs.tol, snapKeep: gs.snapKeep == null ? 0.5 : gs.snapKeep, shapes: gs.shapes || 'off' };
     this._geoCache = {
       body: new THREE.BoxGeometry(gs.size, FH * 0.86, gs.size),
       cornice: new THREE.BoxGeometry(gs.size * 1.07, FH * 0.14, gs.size * 1.07),
@@ -591,7 +591,7 @@ export class Board {
       const perfect = Math.abs(eff) <= this.cfg.tol;
       const fw = this.cfg.size * ((sw.look && sw.look.w) || 1), gb = this.guideBars; // 輔助框跟著這層樓的寬度
       gb[0].scale.x = fw; gb[1].scale.x = fw; gb[2].position.x = fw / 2; gb[3].position.x = -fw / 2;
-      this.guideGroup.position.set(top.x + (perfect ? eff * R.SNAP_KEEP : eff), topY, hp.z); // 預測落點：已算入風的吹移
+      this.guideGroup.position.set(top.x + (perfect ? eff * this.cfg.snapKeep : eff), topY, hp.z); // 預測落點：已算入風的吹移
       this.guideMat.color.set(perfect ? 0x35e08a : 0xffffff);
       this.guideBeam.scale.y = 5.2; this.guideBeam.position.y = 2.6; this.guideBeam.visible = false;
     }

@@ -18,7 +18,7 @@ async function test(name, fn) {
   });
   await test('完美放置：偏移在容許內只吸附一部分並累積連擊與加分', () => {
     const g = mk();
-    const r1 = g.drop({ d: 0.1 }); assert.ok(r1.perfect && Math.abs(r1.placed.x - 0.1 * T.SNAP_KEEP) < 1e-9 && r1.placed.z === 0 && r1.combo === 1);
+    const r1 = g.drop({ d: 0.1 }); assert.ok(r1.perfect && Math.abs(r1.placed.x - 0.1 * T.SNAP_KEEP.normal) < 1e-9 && r1.placed.z === 0 && r1.combo === 1);
     const r2 = g.drop({ d: -0.1 }); assert.ok(r2.perfect && r2.combo === 2 && r2.gain > r1.gain, '連擊加分遞增');
     assert.strictEqual(g.height(), 3);
   });
