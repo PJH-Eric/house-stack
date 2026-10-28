@@ -211,7 +211,10 @@ onLangChange(() => {
 function connectBanner() {
   const el = h('div', { class: 'net-banner', role: 'status', hidden: true }, t('連線中斷，正在重新連線…'));
   document.body.append(el);
-  net.net.onStatus = (st) => { el.hidden = !(st === 'down' && app.online); };
+  net.net.onStatus = (st) => {
+    el.hidden = !(st === 'down' && app.online);
+    if (st !== 'up' && cur.onOnline) cur.onOnline(null);
+  };
 }
 
 async function enterRoom(r) {
@@ -248,6 +251,7 @@ function wireNet() {
   net.on('game:forfeit', (d) => { if (cur.name === 'game') cur.onForfeit(d); });
   net.on('room:chat', (m) => { if (app.online) app.online.chat.push(m); if (cur.onChat) cur.onChat(m); });
   net.on('lobby:list', (l) => { if (cur.onList) cur.onList(l); });
+  net.on('lobby:online', (count) => { if (cur.onOnline) cur.onOnline(count); });
   net.on('room:closed', (d) => {
     if (!app.online) return;
     net.saveSession(null); app.online = null;
@@ -275,7 +279,15 @@ function lobby() {
   const listBox = h('div', { class: 'room-list' });
   const inviteBox = h('div', { class: 'invite-box' });
   let rooms = [];
+  let onlineCount = null;
   const online = CONFIG.onlineAvailable;
+  const onlineCountBox = h('p', { class: 'lobby-online-count', role: 'status', 'aria-live': 'polite', hidden: true });
+
+  function paintOnlineCount(count) {
+    if (count === null || (Number.isInteger(count) && count >= 0)) onlineCount = count;
+    onlineCountBox.hidden = !Number.isInteger(onlineCount);
+    onlineCountBox.textContent = Number.isInteger(onlineCount) ? t('目前在線：{n} 人', { n: onlineCount }) : '';
+  }
 
   function renderList() {
     listBox.textContent = '';
@@ -351,6 +363,7 @@ function lobby() {
     h('div', { class: 'lobby-actions' }, Btn({ label: t('快速加入'), kind: 'primary', size: 'lg', onClick: quick, cls: 'autofocus' }), Btn({ label: t('建立房間'), size: 'lg', onClick: createDialog })),
     h('div', { class: 'code-row' }, codeTf, Btn({ label: t('以房號加入'), size: 'sm', onClick: () => codeTf.input.value.trim() && join(codeTf.input.value.trim().toUpperCase(), 'player') })),
     status,
+    onlineCountBox,
     h('h3', { class: 'set-h' }, t('公開房間')), listBox,
   ];
   const page = Page({ title: t('線上對戰'), back: { fn: () => { if (online) net.emitQuiet('lobby:unwatch'); go('home'); } }, children: body, narrow: true });
@@ -364,10 +377,11 @@ function lobby() {
       net.emit('lobby:watch', undefined, 45000).then((r) => {
         setBusy(false);
         if (!r.ok) { status.textContent = ''; status.append(h('div', { class: 'notice err' }, h('b', null, t('連不上伺服器')), h('p', null, r.msg || t('請稍後再試')), Btn({ label: t('重試'), onClick: () => go('lobby') }))); return; }
-        rooms = r.rooms; renderList();
+        rooms = r.rooms; paintOnlineCount(r.online); renderList();
       });
     },
     onList(l) { rooms = l; renderList(); },
+    onOnline(count) { paintOnlineCount(count); },
     destroy() { clearTimeout(loadingTimer); },
   };
 }

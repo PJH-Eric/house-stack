@@ -55,7 +55,7 @@ export function getSocket() {
   });
   socket.on('disconnect', () => { net.connected = false; status('down'); });
   socket.on('connect_error', () => { status('down'); });
-  for (const ev of ['room:state', 'room:chat', 'room:closed', 'room:kicked', 'game:start', 'game:turn', 'game:drop', 'game:preview', 'game:forfeit', 'lobby:list']) {
+  for (const ev of ['room:state', 'room:chat', 'room:closed', 'room:kicked', 'game:start', 'game:turn', 'game:drop', 'game:preview', 'game:forfeit', 'lobby:list', 'lobby:online']) {
     socket.on(ev, (d) => listeners.get(ev) && listeners.get(ev)(loc(d)));
   }
   return socket;

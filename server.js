@@ -45,7 +45,11 @@ app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], s
 let lobbyTimer = null;
 function pushLobby() {
   if (lobbyTimer) return;
-  lobbyTimer = setTimeout(() => { lobbyTimer = null; io.to('lobby').emit('lobby:list', rm.lobbyList()); }, 250);
+  lobbyTimer = setTimeout(() => {
+    lobbyTimer = null;
+    io.to('lobby').emit('lobby:list', rm.lobbyList());
+    io.to('lobby').emit('lobby:online', io.engine.clientsCount);
+  }, 250);
 }
 function pushState(room) {
   for (const m of room.members.values()) if (m.sid) io.to(m.sid).emit('room:state', rm.view(room, m.id));
@@ -153,7 +157,11 @@ io.on('connection', (socket) => {
   const ok = (cb, data) => typeof cb === 'function' && cb({ ok: true, ...data });
   const fail = (cb, code, msg) => typeof cb === 'function' && cb({ ok: false, code, msg });
 
-  socket.on('lobby:watch', (d, cb) => { socket.join('lobby'); ok(typeof d === 'function' ? d : cb, { rooms: rm.lobbyList() }); });
+  socket.on('lobby:watch', (d, cb) => {
+    socket.join('lobby');
+    ok(typeof d === 'function' ? d : cb, { rooms: rm.lobbyList(), online: io.engine.clientsCount });
+    pushLobby();
+  });
   socket.on('lobby:unwatch', () => socket.leave('lobby'));
 
   socket.on('invite:info', ({ roomId, token } = {}, cb) => {
@@ -258,6 +266,7 @@ io.on('connection', (socket) => {
   }));
 
   socket.on('disconnect', () => {
+    pushLobby();
     const loc = rm.markDisconnected(sid);
     if (!loc) return;
     const { room, member } = loc;

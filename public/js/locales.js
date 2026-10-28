@@ -82,6 +82,7 @@ export const EN = {
   "{label}已複製": "{label} copied",
   "請長按或選取後複製：": "Press and hold or select to copy:",
   "目前沒有房間。按「快速加入」會自動幫你開一間！": "No rooms right now. Press \"Quick Join\" and one will be opened for you!",
+  "目前在線：{n} 人": "Online now: {n}",
   "{host} 的房間": "{host}'s room",
   "固定形狀": "Fixed shape",
   "每層不同": "Varied floors",
