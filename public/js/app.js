@@ -21,6 +21,7 @@ let loadingTimer = 0;
 /* ---------------- 路由 ---------------- */
 function go(name, params = {}) {
   if (cur && cur.destroy) cur.destroy();
+  if (name !== 'lobby' && name !== 'room' && !(name === 'game' && app.online)) net.disconnect();
   document.querySelectorAll('.sel-pop').forEach((e) => e.remove());
   rootEl.textContent = '';
   const builders = { home, setup, tutorial, lobby, room, game };

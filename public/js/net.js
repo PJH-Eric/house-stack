@@ -28,6 +28,13 @@ function loc(d, depth = 0) {
 
 export function on(ev, fn) { listeners.set(ev, fn); }
 
+export function disconnect() {
+  if (socket) socket.disconnect();
+  socket = null;
+  net.connected = false;
+  net.ever = false;
+}
+
 export function getSocket() {
   if (!CONFIG.serverUrl) return null;
   if (socket) return socket;
@@ -63,4 +70,4 @@ export function emit(ev, data, timeout = 9000) {
     s.emit(ev, data, (r) => { if (done) return; done = true; clearTimeout(timer); resolve(loc(r) || { ok: false }); });
   });
 }
-export function emitQuiet(ev, data) { const s = getSocket(); if (s && s.connected) s.emit(ev, data); }
+export function emitQuiet(ev, data) { if (socket && socket.connected) socket.emit(ev, data); }
