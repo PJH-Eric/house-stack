@@ -202,19 +202,24 @@ button, input { font: inherit; color: inherit; }
 .rh-code small { display: block; font-size: .72rem; color: var(--ink-2); font-weight: 800; letter-spacing: .1em; }
 .rh-code b { font-size: 2.2rem; letter-spacing: .25em; color: var(--red-2); font-family: ui-monospace, monospace; line-height: 1; }
 .rh-info { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
-.seats { display: grid; gap: 10px; margin-bottom: 14px; }
+.seats { display: grid; align-content: start; gap: 10px; margin-bottom: 14px; }
 .seat { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 3px solid var(--wood-3); border-radius: 14px; background: #ffffff; }
-.seat.empty { background: transparent; border-style: dashed; }
+.seat.empty { display: grid; align-content: start; grid-template-columns: 32px minmax(0, 1fr); align-items: start; background: transparent; border-style: dashed; }
+.seat.empty .seat-main { align-content: start; min-width: 0; width: 100%; }
 .seat.host { border-color: var(--red-2); }
 .seat-n { flex: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-weight: 900; color: #fff; background: var(--wood-3); }
 .seat-main { flex: 1; min-width: 0; display: grid; gap: 4px; }
 .seat-main b { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; } .seat-main i { font-style: normal; color: var(--ink-2); font-weight: 600; }
 .seat-main small { color: var(--ink-2); }
-.seat-ai { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .seat-ai .sel { min-width: 150px; flex: 1; }
+.seat-ai { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0; }
 .room-actions { display: grid; gap: 10px; }
 .rs { margin-bottom: 14px; padding: 12px 14px; border: 3px solid var(--wood-3); border-radius: 14px; background: #ffffff; }
 .rs h3, .room-chat h3 { font-size: .95rem; letter-spacing: .1em; color: var(--wood-4); margin-bottom: 4px; }
 .inv-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.room-invite-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: center; margin: 8px 0; padding: 8px 10px; border: 2px solid rgba(29, 141, 122, .55); border-radius: 12px; background: rgba(47, 143, 131, .12); }
+.room-invite-label { grid-column: 1 / -1; color: var(--wood-4); font-weight: 800; }
+.room-invite-url { min-width: 0; padding: 7px 8px; border: 2px solid var(--wood-3); border-radius: 9px; background: #fff8e6; color: var(--ink); font: 700 .76rem/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace; overflow-wrap: anywhere; word-break: break-all; user-select: all; -webkit-user-select: all; }
+.room-invite-url:focus-visible { outline: 3px solid var(--yellow); outline-offset: 1px; }
 .spec-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; } .spec-list li { display: flex; align-items: center; gap: 6px; }
 .spec-list .btn { margin-left: auto; }
 .room-chat { border: 3px solid var(--wood-3); border-radius: 14px; background: #ffffff; padding: 10px 12px; }
@@ -446,10 +451,11 @@ html[lang="en"] .logo-blk { width: auto; min-width: 40px; height: 46px; padding:
 .seat-ai .sel { min-width: 0; }
 .room-row { grid-template-columns: minmax(0, 1fr) auto; }
 @media (max-width: 420px) { .room-row { grid-template-columns: minmax(0, 1fr); } .rr-act { grid-column: 1; grid-row: auto; flex-wrap: wrap; } .rr-act .btn { flex: 1 1 auto; } }
-@media (max-width: 420px) { .seat-ai .row-ctl { flex-direction: column; align-items: stretch; gap: 6px; padding: 4px 0; } .seat-ai .row-select .sel, .seat-ai .sel { width: 100%; max-width: none; } .seat-ai .btn { align-self: flex-start; } }
+@media (max-width: 600px) { .room-invite-row { grid-template-columns: minmax(0, 1fr); } .room-invite-label { grid-column: 1; } .room-invite-row .btn { justify-self: start; } }
+@media (max-width: 420px) { .seat-ai .sel { width: 100%; max-width: none; } .seat-ai .btn { align-self: flex-start; } }
 /* 下拉選單文字放不下就換行，不用省略號截斷（多語系長文字） */
 .sel-text { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.2; text-align: left; }
-.seat-ai .row-select .sel, .seat-ai .sel { width: auto; flex: 1 1 150px; max-width: none; }
+.seat-ai > .sel { width: auto; flex: 1 1 150px; max-width: none; }
 /* 窄版結算層蓋過右上角語言／設定鈕，避免壓在標題上（結算層內已有三個動作鈕） */
 @media (max-width: 560px) { body:has(.result) .gear-wrap { z-index: 20; } }
 

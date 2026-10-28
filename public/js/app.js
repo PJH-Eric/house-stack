@@ -407,7 +407,7 @@ function room() {
     for (let i = 0; i < v.settings.maxPlayers; i++) {
       const m = seated[i];
       if (!m) {
-        seatsBox.append(h('div', { class: 'seat empty' }, h('span', { class: 'seat-n' }, i + 1), h('div', { class: 'seat-main' }, h('b', null, t('空位')), isHost ? h('div', { class: 'seat-ai' }, Select({ value: 'normal', options: AI_OPTS, block: false, label: t('電腦難度'), onChange: (lv) => { selAi = lv; } }), Btn({ label: t('加入電腦'), size: 'sm', onClick: () => net.emit('room:ai:add', { level: selAi }) })) : h('small', null, t('等待加入…')))));
+        seatsBox.append(h('div', { class: 'seat empty' }, h('span', { class: 'seat-n' }, i + 1), h('div', { class: 'seat-main' }, h('b', null, t('空位')), isHost ? h('div', { class: 'seat-ai' }, Select({ value: 'normal', options: AI_OPTS, block: false, onChange: (lv) => { selAi = lv; } }), Btn({ label: t('加入電腦'), size: 'sm', onClick: () => net.emit('room:ai:add', { level: selAi }) })) : h('small', null, t('等待加入…')))));
         continue;
       }
       const isAi = m.role === 'ai';
@@ -415,7 +415,7 @@ function room() {
         h('span', { class: 'seat-n' }, i + 1),
         h('div', { class: 'seat-main' },
           h('b', null, m.name, m.id === me.id ? h('i', null, t('（你）')) : null, m.host ? icon('crown', 16) : null),
-          isAi ? (isHost ? h('div', { class: 'seat-ai' }, Select({ value: m.ai, options: AI_OPTS, block: false, label: t('電腦難度'), onChange: (lv) => net.emit('room:ai:level', { id: m.id, level: lv }) }), Btn({ label: t('移除'), size: 'sm', onClick: () => net.emit('room:ai:remove', { id: m.id }) })) : h('small', null, t('電腦・{v0}', { v0: diffLabel(m.ai) })))
+          isAi ? (isHost ? h('div', { class: 'seat-ai' }, Select({ value: m.ai, options: AI_OPTS, block: false, onChange: (lv) => net.emit('room:ai:level', { id: m.id, level: lv }) }), Btn({ label: t('移除'), size: 'sm', onClick: () => net.emit('room:ai:remove', { id: m.id }) })) : h('small', null, t('電腦・{v0}', { v0: diffLabel(m.ai) })))
             : h('small', null, m.host ? t('房主') : m.ready ? t('已準備') : t('未準備'), m.connected ? '' : t('・連線中斷'))),
         !isAi && isHost && m.id !== me.id ? Btn({ label: t('請出'), size: 'sm', onClick: () => net.emit('room:kick', { id: m.id }) }) : null));
     }
@@ -429,8 +429,15 @@ function room() {
         Select({ label: t('每回合限時'), value: String(v.settings.turnLimit || R.DEFAULT_TURN_SEC), options: TURN_OPTS, onChange: (d) => net.emit('room:settings', { turnLimit: +d }) })]
         : h('p', { class: 'muted' }, t('難度 {v0}・形狀 {label}・上限 {maxPlayers} 人（由房主設定）', { v0: diffLabel(v.settings.difficulty), label: (SHAPE_OPTS.find((o) => o.value === (v.settings.shapes || 'off')) || SHAPE_OPTS[0]).label, maxPlayers: v.settings.maxPlayers }), h('br'), t('每回合限時：{v}', { v: (TURN_OPTS.find((o) => o.value === String(v.settings.turnLimit || R.DEFAULT_TURN_SEC)) || TURN_OPTS[0]).label }))));
     if (v.invite) {
+      const inviteRow = (label, link, copyLabel, toastLabel) => h('div', { class: 'room-invite-row' },
+        h('small', { class: 'room-invite-label' }, label),
+        h('div', { class: 'room-invite-url', role: 'textbox', 'aria-readonly': 'true', 'aria-label': label, tabindex: '0' }, link),
+        Btn({ label: copyLabel, ico: 'link', size: 'sm', onClick: () => copyText(link, toastLabel) }));
+      const playerLink = inviteLink(v.id, v.invite.player);
+      const spectatorLink = inviteLink(v.id, v.invite.spectator);
       sideBox.append(sec(t('邀請朋友'),
-        h('div', { class: 'inv-btns' }, Btn({ label: t('複製玩家連結'), ico: 'link', size: 'sm', onClick: () => copyText(inviteLink(v.id, v.invite.player), t('玩家邀請連結')) }), Btn({ label: t('複製觀戰連結'), ico: 'eye', size: 'sm', onClick: () => copyText(inviteLink(v.id, v.invite.spectator), t('觀戰邀請連結')) })),
+        inviteRow(t('玩家邀請連結'), playerLink, t('複製玩家連結'), t('玩家邀請連結')),
+        inviteRow(t('觀戰邀請連結'), spectatorLink, t('複製觀戰連結'), t('觀戰邀請連結')),
         isHost ? Btn({ label: t('撤銷並重發連結'), size: 'sm', onClick: async () => { const r = await net.emit('room:revoke', {}); r.ok && toast(t('舊連結已失效，已產生新連結')); } }) : null));
     }
     const specs = members.filter((m) => m.role === 'spectator');
