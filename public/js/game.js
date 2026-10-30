@@ -35,7 +35,6 @@ export function GameScreen(cfg) {
 
   const canvas = h('canvas', { class: 'stage-canvas', role: 'img', 'aria-label': t('疊疊高樓 3D 遊戲畫面：吊車正在放下新的樓層') });
   const board = new Board(canvas);
-  board.sky.onStage = (name, k) => { if (k > 0 && !destroyed && !S.over) toast(t('進入「{name}」', { name }), 2200); };
   board.sky.onThunder = () => { if (!destroyed) A.sfx.thunder(); };
   const live = h('div', { class: 'sr-only', 'aria-live': 'polite' });
   const popLayer = h('div', { class: 'pop-layer', 'aria-hidden': 'true' });
@@ -140,17 +139,18 @@ export function GameScreen(cfg) {
     const w = (sw && sw.wind) || 0, lvl = Math.min(5, Math.round(Math.abs(w) * 5));
     const space = !!(sw && sw.space);
     windChip.classList.toggle('calm', lvl === 0 && !space); windChip.classList.toggle('space', space); windArrow.style.transform = w < 0 ? 'scaleX(-1)' : '';
+    windChip.classList.toggle('windy', lvl > 0 && !space);
     windTxt.textContent = space ? t('無重力・磁吸') : lvl === 0 ? t('無風') : t('風 {lvl} 級', { lvl });
     [...windBars.children].forEach((b, i) => b.classList.toggle('on', i < lvl));
     if (space) { windChip.setAttribute('aria-label', t('太空無重力：樓層會被磁力吸向中心，下落與搖晃都變慢')); return; }
     windChip.setAttribute('aria-label', lvl === 0 ? t('目前無風') : t('{v0}吹，風力 {lvl} 級（最大 5 級）', { v0: w > 0 ? t('向右') : t('向左'), lvl }));
   }
-  const topbar = h('div', { class: 'topbar' }, h('div', { class: 'tb-left' }, infoBtn, menuBtn), h('div', { class: 'tb-center' }, banner, timerEl), h('div', { class: 'tb-right' }, starIco, stabMini));
+  const topbar = h('div', { class: 'topbar' }, h('div', { class: 'tb-left' }, infoBtn, menuBtn), h('div', { class: 'tb-center' }, banner, timerEl), h('div', { class: 'tb-right' }, windChip, h('div', { class: 'stability-group' }, starIco, stabMini)));
 
   const btnDrop = Btn({ ico: 'drop', label: t('放下'), kind: 'primary', size: 'lg', keycap: t('空白'), onClick: () => drop(), cls: 'drop-btn' });
   const controls = h('div', { class: 'controls' }, btnDrop);
   const specBar = h('div', { class: 'spec-bar' }, icon('eye', 18), h('span', null, t('觀戰中')));
-  const statusbar = h('div', { class: 'stage-status' }, hudBL, windChip);
+  const statusbar = h('div', { class: 'stage-status' }, hudBL);
   const view = h('div', { class: 'stage-view' }, canvas, popLayer, topbar, statusbar);
   const stage = h('main', { class: 'stage' }, view, S.role === 'spectator' ? specBar : controls, live);
   const root = h('div', { class: 'game' + (matchMedia('(min-width: 900px)').matches ? ' panel-open' : '') }, aside, stage);
