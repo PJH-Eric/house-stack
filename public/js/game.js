@@ -8,7 +8,8 @@ import { h, icon, Btn, IconBtn, Modal, Hearts, Badge, toast, hideToast, hasModal
 import { Board, PLAYER_COLORS } from './art.js';
 import * as A from './audio.js';
 import { store } from './store.js';
-import { app, diffLabel, sleep, reduceMotion } from './core.js';
+import { app, diffLabel, sleep, reduceMotion, ACH_TEXT } from './core.js';
+import { recordGame } from './records.js';
 import { Chat } from './chat.js';
 import { emit, emitQuiet } from './net.js';
 
@@ -300,6 +301,11 @@ export function GameScreen(cfg) {
       title = S.role === 'spectator' ? t('{v0} 獲勝', { v0: nameOf(S.winnerId) }) : win ? t('你贏了！') : t('{v0} 獲勝', { v0: nameOf(S.winnerId) });
       sub = S.summit ? t('大家一起登頂，由愛心和得分決勝') : win ? t('你是最後留下來的人') : t('樓倒太多次的人出局了'); tone = win ? 'win' : S.role === 'spectator' ? 'plain' : 'lose';
     } else { title = S.summit ? t('登頂平手！') : t('對局結束'); sub = ''; tone = 'plain'; }
+    let unlocked = [];
+    if (S.role !== 'spectator') {
+      const rec = recordGame(store.get(), { mode: solo ? 'solo' : online ? 'online' : 'ai', peak: S.peak, bestCombo: S.bestCombo, win: !!S.winnerId && S.winnerId === S.myId, me }, Date.now());
+      store.set({ stats: rec.stats, ach: rec.ach }); unlocked = rec.unlocked;
+    }
     (tone === 'win' ? A.sfx.win : A.sfx.lose)();
     if (tone === 'win') board.confettiAtTop();
 
@@ -320,6 +326,7 @@ export function GameScreen(cfg) {
       h('div', { class: `res-card ${tone}` },
         h('h2', null, title), sub ? h('p', { class: 'res-sub' }, sub) : null,
         S.newBest ? h('div', { class: 'res-new' }, t('新紀錄！')) : null,
+        unlocked.length ? h('ul', { class: 'res-ach' }, unlocked.map((id) => h('li', null, icon('trophy', 16), h('b', null, ACH_TEXT[id][0]), h('small', null, ACH_TEXT[id][1])))) : null,
         statLine, solo ? null : rows,
         h('div', { class: 'res-actions' }, again, room, home),
         h('p', { class: 'res-hint', id: 'res-hint' }, !online ? t('「回到房間」會回到開局設定') : S.isHost ? t('房主按「再來一局」立即開局（需全員準備）') : t('按「再來一局」代表你已準備好')))), { cls: 'res-scroll' }));

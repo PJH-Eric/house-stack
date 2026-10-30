@@ -535,3 +535,25 @@ html[lang="en"] .logo-blk { width: auto; min-width: 40px; height: 46px; padding:
   .game .star-ico svg { width: 30px; height: 30px; }
   .stage-status { right: calc(220px + var(--safe-r)); bottom: calc(12px + var(--safe-b)); }
 }
+
+/* ---------- 紀錄與成就 ---------- */
+.rec-tabs { display: flex; gap: 8px; margin: 4px 0 8px; }
+.rec-tab { flex: 1; padding: 8px 12px; border-radius: 12px; border: 3px solid var(--wood-4); background: var(--paper); color: var(--ink); font: 800 1rem var(--font); cursor: pointer; }
+.rec-tab.on { background: var(--yellow); }
+.rec-tab:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.rec-list, .ach-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rec-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 8px 12px; border-radius: 10px; background: var(--paper-2); font-weight: 700; }
+.rec-list b em { font-style: normal; font-size: .72rem; color: var(--ink-2); margin-left: .2em; }
+.rec-empty { color: var(--ink-2); font-weight: 700; margin: 6px 0; }
+.ach { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--paper-2); opacity: .75; }
+.ach.on { opacity: 1; background: #fff3c2; border: 2px solid var(--yellow); }
+.ach-ico { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--paper-3); color: var(--ink-2); }
+.ach.on .ach-ico { background: var(--yellow); color: #8e2f0c; }
+.ach b, .ach small { display: block; } .ach small { color: var(--ink-2); font-weight: 700; }
+.ach-bar { position: relative; height: 16px; margin-top: 6px; border-radius: 8px; background: var(--paper-3); overflow: hidden; }
+.ach-bar i { position: absolute; inset: 0 auto 0 0; background: var(--teal); }
+.ach-bar span { position: relative; display: block; text-align: center; font-size: .7rem; font-weight: 800; line-height: 16px; }
+.res-ach { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.res-ach li { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 8px; padding: 6px 10px; border-radius: 10px; background: #fff3c2; border: 2px solid var(--yellow); }
+.res-ach small { color: var(--ink-2); font-weight: 700; }
+.ach > div { flex: 1; min-width: 0; }

@@ -17,6 +17,18 @@ export const diffLabel = (k) => t((R.DIFFICULTIES[k] || {}).label || k); // 幼�
 export const DIFF_OPTS = DIFF_KEYS.map((k) => ({ value: k, label: diffLabel(k), sub: DIFF_DESC[k] }));
 export const AI_OPTS = DIFF_KEYS.filter((k) => k !== 'mythic').map((k) => ({ value: k, label: t('電腦・') + diffLabel(k) }));
 
+/** 成就名稱與說明（id 對應 records.js 的 ACHIEVEMENTS） */
+export const ACH_TEXT = {
+  first: [t('初來乍到'), t('完成第一局遊戲')],
+  f10: [t('小有高度'), t('單人挑戰蓋到 10 層')],
+  f30: [t('摩天大樓'), t('單人挑戰蓋到 30 層')],
+  f60: [t('穿雲而上'), t('單人挑戰蓋到 60 層')],
+  space: [t('太空建築師'), t('單人挑戰蓋到 140 層，進入太空')],
+  combo5: [t('神準連擊'), t('單人挑戰一局內完美連擊 5 次')],
+  vsWin: [t('擊敗電腦'), t('在對電腦輪流中獲勝')],
+  onlineWin: [t('線上高手'), t('在線上對戰中獲勝')],
+};
+
 export function nick() { return (store.get().nick || '').trim(); }
 export function randomNick() {
   const a = [t('小'), t('圓'), t('胖'), t('快樂'), t('勇敢'), t('呆呆'), t('輕輕'), t('穩穩')];

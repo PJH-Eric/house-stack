@@ -8,7 +8,8 @@ import { Board, webglSupported } from './art.js';
 import * as A from './audio.js';
 import { store } from './store.js';
 import { CONFIG } from './config.js';
-import { app, DIFF_OPTS, DIFF_DESC, AI_OPTS, diffLabel, ensureNick, nick, inviteLink, reduceMotion, randomNick } from './core.js';
+import { normalize, ACHIEVEMENTS, unlockedIds } from './records.js';
+import { app, ACH_TEXT, DIFF_KEYS, DIFF_OPTS, DIFF_DESC, AI_OPTS, diffLabel, ensureNick, nick, inviteLink, reduceMotion, randomNick } from './core.js';
 import * as net from './net.js';
 import { GameScreen } from './game.js';
 import { Chat } from './chat.js';
@@ -24,7 +25,7 @@ function go(name, params = {}) {
   if (name !== 'lobby' && name !== 'room' && !(name === 'game' && app.online)) net.disconnect();
   document.querySelectorAll('.sel-pop').forEach((e) => e.remove());
   rootEl.textContent = '';
-  const builders = { home, setup, tutorial, lobby, room, game };
+  const builders = { home, setup, tutorial, records, lobby, room, game };
   cur = builders[name](params) || {};
   cur.name = name;
   app.screen = cur;
@@ -74,6 +75,7 @@ function home() {
         Btn({ label: t('單人挑戰'), ico: 'play', kind: 'primary', size: 'lg', block: true, onClick: () => go('setup', { mode: 'solo' }), cls: 'autofocus' }),
         Btn({ label: t('對電腦輪流'), size: 'lg', block: true, onClick: () => go('setup', { mode: 'vs' }) }),
         Btn({ label: t('線上對戰'), size: 'lg', block: true, onClick: () => go('lobby'), title: online ? '' : t('尚未設定線上伺服器') }),
+        Btn({ label: t('紀錄與成就'), ico: 'trophy', size: 'lg', block: true, onClick: () => go('records') }),
         Btn({ label: t('怎麼玩'), size: 'lg', block: true, onClick: () => go('tutorial') })),
       bests.length ? h('p', { class: 'home-best' }, t('個人最高：'), bests.join('　')) : null,
       !online ? h('p', { class: 'home-note' }, t('提示：尚未設定線上伺服器，線上對戰需要部署後端。')) : null);
@@ -166,6 +168,56 @@ function tutorial() {
   return { el: Page({ title: t('怎麼玩'), back: { fn: () => go('home') }, children: body, narrow: true }) };
 }
 
+/* ---------------- 紀錄與成就 ---------------- */
+const SHAPE_NAME = { off: '', fixed: t('・固定形狀'), every: t('・每層不同') };
+function records() {
+  const data = store.get();
+  const st = normalize(data);
+  const pct = (w, n) => (n ? Math.round((w / n) * 100) + '%' : '—');
+  const stat = (label, value, unit) => h('div', { class: 'stat' }, h('small', null, label), h('b', null, value, unit ? h('em', null, unit) : null));
+  const bestRows = DIFF_KEYS.flatMap((k) => ['off', 'fixed', 'every'].map((sh) => [k, sh, store.best(k, sh)]).filter((r) => r[2]));
+  const recordTab = () => [
+    h('h3', { class: 'set-h' }, t('最高樓層')),
+    bestRows.length
+      ? h('ul', { class: 'rec-list' }, bestRows.map(([k, sh, v]) => h('li', null, h('span', null, diffLabel(k), SHAPE_NAME[sh]), h('b', null, v, h('em', null, t(' 層', { n: v }))))))
+      : h('p', { class: 'rec-empty' }, t('還沒有紀錄，去蓋一棟吧！')),
+    h('h3', { class: 'set-h' }, t('累計統計')),
+    h('div', { class: 'sum-stats' },
+      stat(t('完成場次'), st.games, t(' 場', { n: st.games })), stat(t('蓋過樓層'), st.floors, t(' 層', { n: st.floors })),
+      stat(t('完美放置'), st.perfects, t(' 次', { n: st.perfects })), stat(t('倒塌'), st.topples, t(' 次', { n: st.topples })),
+      stat(t('最佳連擊'), '×' + st.bestCombo)),
+    h('h3', { class: 'set-h' }, t('對戰戰績')),
+    h('div', { class: 'sum-stats' },
+      stat(t('對電腦'), t('{w} 勝 / {n} 場', { w: st.vsWins, n: st.vsGames })), stat(t('勝率'), pct(st.vsWins, st.vsGames)),
+      stat(t('線上對戰'), t('{w} 勝 / {n} 場', { w: st.onlineWins, n: st.onlineGames })), stat(t('勝率'), pct(st.onlineWins, st.onlineGames))),
+  ];
+  const done = new Set(unlockedIds(st));
+  const achTab = () => [
+    h('p', { class: 'rec-empty' }, t('已解鎖 {a} / {b}', { a: ACHIEVEMENTS.filter((a) => data.ach[a.id] || done.has(a.id)).length, b: ACHIEVEMENTS.length })),
+    h('ul', { class: 'ach-list' }, ACHIEVEMENTS.map((a) => {
+      const ok = !!data.ach[a.id] || done.has(a.id);
+      const cur = Math.min(st[a.key], a.goal);
+      return h('li', { class: 'ach' + (ok ? ' on' : '') },
+        h('span', { class: 'ach-ico' }, icon('trophy', 22)),
+        h('div', null, h('b', null, ACH_TEXT[a.id][0]), h('small', null, ACH_TEXT[a.id][1]),
+          ok ? null : h('div', { class: 'ach-bar', role: 'meter', 'aria-valuemin': 0, 'aria-valuemax': a.goal, 'aria-valuenow': cur }, h('i', { style: { width: Math.round((cur / a.goal) * 100) + '%' } }), h('span', null, cur + ' / ' + a.goal))));
+    })),
+  ];
+  const tabs = [['rec', t('紀錄'), recordTab], ['ach', t('成就'), achTab]];
+  const body = h('div', { class: 'rec-body' });
+  const bar = h('div', { class: 'rec-tabs', role: 'tablist' });
+  const show = (id) => {
+    bar.textContent = ''; body.textContent = '';
+    for (const [tid, label, build] of tabs) {
+      const b = h('button', { type: 'button', role: 'tab', class: 'rec-tab' + (tid === id ? ' on' : ''), 'aria-selected': String(tid === id), onClick: () => show(tid) }, label);
+      bar.append(b);
+      if (tid === id) body.append(...build());
+    }
+  };
+  show('rec');
+  return { el: Page({ title: t('紀錄與成就'), back: { fn: () => go('home') }, children: [bar, body], narrow: true }) };
+}
+
 /* ---------------- 設定彈窗（右上角齒輪） ---------------- */
 function applySettings(s) {
   A.configure({ music: s.music, musicVol: s.musicVol / 100, sfx: s.sfx, sfxVol: s.sfxVol / 100 });
@@ -203,7 +255,7 @@ app.openSettings = openSettings;
 onLangChange(() => {
   if (settingsModal) { settingsModal.close(true); settingsModal = null; }
   const name = app.screen && app.screen.name;
-  if (['home', 'setup', 'tutorial', 'lobby'].includes(name)) location.reload();
+  if (['home', 'setup', 'tutorial', 'records', 'lobby'].includes(name)) location.reload();
   else toast(t('語言已切換，離開目前畫面後會完整套用'));
 });
 

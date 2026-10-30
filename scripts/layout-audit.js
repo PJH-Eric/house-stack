@@ -92,6 +92,7 @@ function auditPage() {
     await p.evaluate(() => window.__app.go('setup', { mode: 'solo' })); await check('單人設定');
     await p.evaluate(() => window.__app.go('setup', { mode: 'vs' })); await check('對電腦設定');
     await p.evaluate(() => window.__app.go('tutorial')); await check('教學');
+    await p.evaluate(() => window.__app.go('records')); await check('紀錄'); await p.click('.rec-tab:nth-child(2)'); await check('成就');
     await p.evaluate(() => window.__app.go('lobby')); await p.waitForTimeout(700); await check('大廳');
     await p.click('.lobby-actions .btn:not(.autofocus)'); await p.waitForSelector('.modal', { timeout: 4000 }).catch(() => {}); await check('建立房間彈窗'); await p.keyboard.press('Escape'); await p.waitForTimeout(300);
     await p.click('.lobby-actions .autofocus'); await p.waitForSelector('.room-page', { timeout: 8000 }).catch(() => {}); await p.waitForTimeout(600); await check('房間'); // 快速加入 → 房間頁

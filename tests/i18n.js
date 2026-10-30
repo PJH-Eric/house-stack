@@ -7,7 +7,7 @@ const { pathToFileURL } = require('url');
 const { clientKeys, serverKeys } = require('../scripts/i18n-keys');
 const root = path.join(__dirname, '..');
 const CJK = /[一-鿿]/;
-const UNIT_KEYS = [' 層', ' 次', ' 顆'];
+const UNIT_KEYS = [' 層', ' 次', ' 顆', ' 場'];
 const vars = (s) => [...String(s).replace(/\{(\w+)\|[^|}]*\|[^|}]*\}/g, '{$1}').matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().filter((v, i, a) => a.indexOf(v) === i).join(',');
 
 async function load(search, stored) {

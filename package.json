@@ -10,7 +10,7 @@
     "build:pages": "node scripts/build-pages.js",
     "audit": "node scripts/layout-audit.js",
     "screenshots": "node scripts/screenshots.js",
-    "test": "node tests/i18n.js && node tests/analytics.js && node tests/seo.js && node tests/outage.js && node tests/verify.js",
+    "test": "node tests/i18n.js && node tests/records.js && node tests/analytics.js && node tests/seo.js && node tests/outage.js && node tests/verify.js",
     "i18n:hans": "python3 scripts/gen-hans.py",
     "i18n:check": "node scripts/i18n-check.js",
     "langmenu:check": "node scripts/langmenu-check.js",
