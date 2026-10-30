@@ -323,7 +323,7 @@ export function GameScreen(cfg) {
     if (online && !S.isHost && S.role === 'player') again.querySelector('.btn-label').textContent = t('再來一局（準備）');
     if (online && S.role === 'spectator') { again.disabled = true; again.title = t('觀戰者無法開局，請到房間入座'); }
     resultEl = h('div', { class: 'result', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('結算') }, ScrollArea(h('div', { class: 'res-wrap' },
-      h('div', { class: `res-card ${tone}` },
+      h('div', { class: `res-card ${tone}`, 'data-result-share': '' },
         h('h2', null, title), sub ? h('p', { class: 'res-sub' }, sub) : null,
         S.newBest ? h('div', { class: 'res-new' }, t('新紀錄！')) : null,
         unlocked.length ? h('ul', { class: 'res-ach' }, unlocked.map((id) => h('li', null, icon('trophy', 16), h('b', null, ACH_TEXT[id][0]), h('small', null, ACH_TEXT[id][1])))) : null,
