@@ -257,6 +257,7 @@ export function GameScreen(cfg) {
     if (destroyed) return;
     S.players = res.players.map((p) => ({ ...p }));
     S.height = res.height; S.peak = Math.max(S.peak, res.height); S.turnNo = res.no; S.combo = res.combo;
+    S.bestCombo = Math.max(S.bestCombo, res.combo);
     S.stability = res.stability.stability; board.setStability(res.stability.maxRatio);
     const p = playerOf(res.playerId);
     if (res.toppled) {
