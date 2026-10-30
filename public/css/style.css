@@ -150,7 +150,7 @@ button, input { font: inherit; color: inherit; }
 .home { position: relative; height: 100%; overflow: hidden; }
 .home-scroll { position: absolute; inset: 0; }
 .home-scroll > .sa-view { height: 100%; }
-.home-wrap { min-height: 100%; display: grid; place-items: center; padding: calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l)); }
+.home-wrap { min-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l)); }
 .hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .home-card { position: relative; width: min(440px, 100%); padding: 22px 22px 20px; border: 4px solid var(--wood-4); border-radius: 26px; background: rgba(255,255,255,.93); box-shadow: 0 10px 0 rgba(18,43,87,.45); text-align: center; }
 .logo { display: flex; justify-content: center; gap: 6px; margin-bottom: 8px; }
@@ -161,7 +161,9 @@ button, input { font: inherit; color: inherit; }
 .logo-blk.b4 { background: linear-gradient(#5c97d8, #3a6fb0); transform: translateY(4px) rotate(5deg); }
 .tagline { margin: 16px 0 16px; color: var(--ink-2); font-weight: 700; }
 .home-menu { display: grid; gap: 12px; }
+.home-menu .btn-label { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 .home-best, .home-note { margin-top: 14px; font-size: .84rem; color: var(--ink-2); }
+@media (max-width: 600px) { .home-wrap { padding-top: calc(76px + var(--safe-t)); } }
 
 /* ---------- 教學 ---------- */
 .tut { display: flex; gap: 12px; margin: 14px 0; }
@@ -386,6 +388,7 @@ button, input { font: inherit; color: inherit; }
 .wind-chip { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 11px; border-radius: 14px; background: #f6fbff; border: 3px solid #fff; box-shadow: 0 3px 0 rgba(18,43,87,.4); color: #1d4a8a; pointer-events: none; }
 .wind-chip b { font-size: .92rem; white-space: nowrap; }
 .game .tb-right { gap: 8px; }
+.game .turn-banner { min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 .stability-group { display: flex; align-items: center; min-width: 0; }
 .tb-right .wind-chip { max-width: 100%; box-sizing: border-box; }
 @media (min-width: 601px) {
