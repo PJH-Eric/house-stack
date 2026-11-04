@@ -198,6 +198,7 @@
     g.height = () => g.floors.length;
     g.axis = () => axisFor(g.floors.length);
 
+    let orbitAngle = 0;
     function speedMul() { return Math.min(D.maxSpeedMul, 1 + D.ramp * (g.floors.length - 1)); }
     /** 下一回合的吊車參數（由種子 + 回合序號決定，所有端點一致）。 */
     g.nextSwing = () => {
@@ -220,10 +221,18 @@
       const rhythmLimit = { kids: 0.16, easy: 0.22, normal: 0.3, hard: 0.38, mythic: 0.45 }[diffKey];
       const rhythmRange = rhythmIntro * (0.12 + (rhythmLimit - 0.12) * deepProgress);
       const rhythmPhase = mulberry32((seed ^ 0x6a09e667) >>> 0)() * Math.PI * 2;
-      const rhythm = 1 + rhythmRange * Math.sin(g.turnNo * Math.PI / 6 + rhythmPhase);
+      const challengeScale = diffKey === 'kids' || diffKey === 'easy' ? 0.5 : 1;
+      const cadenceProgress = space ? clamp((n - 333) / 333, 0, 1) : 0;
+      const amplitudeProgress = space ? clamp((n - 666) / 333, 0, 1) : 0;
+      const precisionProgress = space ? clamp((n - 999) / 334, 0, 1) : 0;
+      const orbitPeriod = 12 - 4 * challengeScale * cadenceProgress;
+      const rhythm = 1 + rhythmRange * Math.sin(orbitAngle + rhythmPhase);
       const inertia = r3(transition * D.amp * D.speed * 0.12 * growth * rhythm);
+      const amplitudeWave = Math.sin(g.turnNo * Math.PI / 6 + rhythmPhase + Math.PI / 2);
+      const amp = r3(D.amp * (1 + 0.1 * challengeScale * amplitudeProgress * amplitudeWave));
+      const tol = D.tol * (1 - 0.15 * challengeScale * precisionProgress);
       return {
-        axis: g.axis(), amp: D.amp, omega: r3(D.speed * speedMul()), phase: r3(r() * Math.PI * 2),
+        axis: g.axis(), amp, tol, orbitPeriod, omega: r3(D.speed * speedMul()), phase: r3(r() * Math.PI * 2),
         look: { ...visual(g.turnNo + 1 + g.floors.length * 131), ...shape(n) },
         wind, bias: r3(wind * W.bias), drift: r3(wind * W.drift), space, inertia,
         mag: space ? r3(MAG[diffKey] * (1 - transition)) : 0,
@@ -239,7 +248,8 @@
       let off = dd + drift, perfect = false;
       const mag = g.swingSpec ? g.swingSpec.mag || 0 : 0; // 太空磁吸：偏移被拉回中心一部分
       if (mag) off *= 1 - mag;
-      if (Math.abs(off) <= D.tol) { off *= SNAP_KEEP[diffKey]; perfect = true; }
+      const tol = g.swingSpec && g.swingSpec.tol != null ? g.swingSpec.tol : D.tol;
+      if (Math.abs(off) <= tol) { off *= SNAP_KEEP[diffKey]; perfect = true; }
       const look = g.swingSpec ? g.swingSpec.look : null;
       const nf = { x: top.x + (ax === 'x' ? off : 0), z: top.z + (ax === 'z' ? off : 0), w: look && look.w || 1, h: look && look.h || 1 };
       return { nf, perfect, d: dd, off, axis: ax, drift, mag };
@@ -338,6 +348,7 @@
       res.nextPlayerId = g.over ? null : g.currentPlayer().id;
       res.players = g.publicPlayers();
       res.stability = g.stability();
+      orbitAngle = (orbitAngle + Math.PI * 2 / g.swingSpec.orbitPeriod) % (Math.PI * 2);
       g.swingSpec = g.nextSwing();
       res.nextSwing = g.over ? null : g.swingSpec;
       return res;

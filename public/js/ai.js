@@ -28,7 +28,7 @@
   function chooseMove(game, level, rng, opts) {
     rng = rng || Math.random;
     const R = typeof self !== 'undefined' && self.HouseRules ? self.HouseRules : require('./rules.js');
-    const amp = game.D.amp;
+    const amp = game.swingSpec.amp;
     const speedMul = game.swingSpec.omega / game.D.speed; // 吊車越快，電腦抓時機的誤差越大
     const sigma = (SIGMA[level] != null ? SIGMA[level] : SIGMA.normal) * (1 + 0.9 * (speedMul - 1));
     const tNow = (opts && opts.tNow) || 0;

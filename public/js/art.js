@@ -604,7 +604,7 @@ export class Board {
     if (showGuide) {
       const topY = this.topY() + 0.06;
       const sw = this.turn.swing || {}, drift = (sw.drift || 0) + R.releaseDrift(sw, this.trolleyD, this.releaseDir), eff = (this.trolleyD + drift) * (1 - (sw.mag || 0)); // 風與太空磁吸都算進預測落點
-      const perfect = Math.abs(eff) <= this.cfg.tol;
+      const perfect = Math.abs(eff) <= (sw.tol == null ? this.cfg.tol : sw.tol);
       const fw = this.cfg.size * ((sw.look && sw.look.w) || 1), gb = this.guideBars; // 輔助框跟著這層樓的寬度
       gb[0].scale.x = fw; gb[1].scale.x = fw; gb[2].position.x = fw / 2; gb[3].position.x = -fw / 2;
       this.guideGroup.position.set(top.x + (perfect ? eff * this.cfg.snapKeep : eff), topY, hp.z); // 預測落點：已算入風的吹移

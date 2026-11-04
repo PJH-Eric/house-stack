@@ -222,13 +222,48 @@ async function test(name, fn) {
         }
         a.drop({ d: 0 }); b.drop({ d: 0 });
       }
-      a.turnNo += 12;
-      const cycle = a.nextSwing();
-      a.turnNo -= 12;
-      assert.strictEqual(cycle.inertia, a.nextSwing().inertia, '深空封頂後以十二回合循環');
+      assert.deepStrictEqual(a.nextSwing(), a.swingSpec, '試算吊車參數不推進漂移節奏');
       const move = AI.chooseMove(a, 'hard', T.mulberry32(1), { tNow: 0 });
       const release = T.swingPos(a.swingSpec, move.thinkMs / 1000);
       assert.ok(Math.abs(release - move.d) < 0.02, '深空 AI 在實際吊車位置放手');
+    }
+  });
+  await test('333／666／999 里程碑：節奏、擺幅、完美容許與簡單難度減半', () => {
+    for (const difficulty of Object.keys(T.DIFFICULTIES)) {
+      const g = mk({ difficulty, seed: 42 });
+      const scale = difficulty === 'kids' || difficulty === 'easy' ? 0.5 : 1;
+      for (const height of [332, 333, 500, 665, 666, 800, 998, 999, 1100, 1333, 2000]) {
+        g.floors = Array.from({ length: height }, () => ({ ...g.floors[0] }));
+        g.turnNo = height - 1;
+        g.swingSpec = g.nextSwing();
+        const sw = g.swingSpec;
+        assert.deepStrictEqual(g.nextSwing(), sw, '相同狀態重算結果相同');
+        const progress = Math.min(1, Math.max(0, (height - 333) / 333));
+        assert.ok(Math.abs(sw.orbitPeriod - (12 - 4 * scale * progress)) < 1e-9);
+        const precision = Math.min(1, Math.max(0, (height - 999) / 334));
+        assert.ok(Math.abs(sw.tol / g.D.tol - (1 - 0.15 * scale * precision)) < 1e-9);
+        assert.ok(g.probe(sw.tol * 0.99).perfect, '容許範圍內保持完美');
+        assert.ok(!g.probe(sw.tol * 1.01).perfect, '超過動態容許值不算完美');
+        const result = g.drop({ d: sw.tol * 1.01 });
+        assert.ok(!result.perfect, '實際放置使用相同完美判定');
+      }
+      const amplitudes = [];
+      for (let turn = 0; turn < 12; turn++) {
+        g.turnNo = turn;
+        amplitudes.push(g.nextSwing().amp);
+      }
+      assert.ok(Math.min(...amplitudes) < g.D.amp * (1 - 0.09 * scale));
+      assert.ok(Math.max(...amplitudes) > g.D.amp * (1 + 0.09 * scale));
+      assert.ok(amplitudes.every(amp => Math.abs(amp / g.D.amp - 1) <= 0.1 * scale + 0.001));
+      g.swingSpec = g.nextSwing();
+      const move = AI.chooseMove(g, 'hard', T.mulberry32(1), { tNow: 0 });
+      assert.ok(Math.abs(T.swingPos(g.swingSpec, move.thinkMs / 1000) - move.d) < 0.02);
+      g.floors = Array.from({ length: 666 }, () => ({ ...g.floors[0] }));
+      g.swingSpec = g.nextSwing();
+      const cycleStart = g.swingSpec.inertia;
+      const cycleLength = 12 - 4 * scale;
+      for (let turn = 0; turn < cycleLength; turn++) g.drop({ d: 0 });
+      assert.strictEqual(g.swingSpec.inertia, cycleStart, '實際放置後依縮短的回合數完成漂移循環');
     }
   });
   await test('電腦在太空與不規則樓層下仍能正常蓋樓（困難：50 層內不會全倒）', () => {
