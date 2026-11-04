@@ -1,5 +1,5 @@
 /* 語言切換鈕：放在右上角設定鈕旁（和射氣球等遊戲一致），地球圖示＋目前語言徽章，點開三個選項的小選單。
- * 選單沿用自訂 .sel-pop 外觀，鍵盤可用（↑↓、Esc），選了就套用並由 app.js 的 onLangChange 處理重新載入。 */
+ * 選單沿用自訂 .sel-pop 外觀，鍵盤可用（↑↓、Esc），選了就由 app.js 原地更新畫面語言。 */
 import { t, getLang, setLang, onLangChange, SUPPORTED, LANG_NAMES } from './i18n.js';
 import { h, IconBtn } from './ui.js';
 

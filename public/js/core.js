@@ -1,33 +1,38 @@
 /* 共用狀態與常數（避免畫面模組之間循環相依）。 */
-import { t } from './i18n.js';
+import { t, onLangChange } from './i18n.js';
 import { store } from './store.js';
 const R = window.HouseRules;
 
 export const app = { go: () => {}, screen: null, online: null, openSettings: () => {} };
 
 export const DIFF_KEYS = ['kids', 'easy', 'normal', 'hard', 'mythic'];
-export const DIFF_DESC = {
-  kids: t('樓層超寬、吊車很慢、愛心很多'),
-  easy: t('樓層寬、吊車偏慢'),
-  normal: t('樓層與速度適中'),
-  hard: t('樓層窄、吊車快，容錯很小'),
-  mythic: t('樓層最窄、吊車極快、風最強，只有 1 顆愛心'),
-};
-export const diffLabel = (k) => t((R.DIFFICULTIES[k] || {}).label || k); // 幼幼班／簡單／普通／困難／神話（字典見 locales.js）
-export const DIFF_OPTS = DIFF_KEYS.map((k) => ({ value: k, label: diffLabel(k), sub: DIFF_DESC[k] }));
-export const AI_OPTS = DIFF_KEYS.filter((k) => k !== 'mythic').map((k) => ({ value: k, label: t('電腦・') + diffLabel(k) }));
+export const diffLabel = (k) => t((R.DIFFICULTIES[k] || {}).label || k);
+export let DIFF_DESC, DIFF_OPTS, AI_OPTS, ACH_TEXT;
+function refreshLabels() {
+  DIFF_DESC = {
+    kids: t('樓層超寬、吊車很慢、愛心很多'),
+    easy: t('樓層寬、吊車偏慢'),
+    normal: t('樓層與速度適中'),
+    hard: t('樓層窄、吊車快，容錯很小'),
+    mythic: t('樓層最窄、吊車極快、風最強，只有 1 顆愛心'),
+  };
+  DIFF_OPTS = DIFF_KEYS.map((k) => ({ value: k, label: diffLabel(k), sub: DIFF_DESC[k] }));
+  AI_OPTS = DIFF_KEYS.filter((k) => k !== 'mythic').map((k) => ({ value: k, label: t('電腦・') + diffLabel(k) }));
 
-/** 成就名稱與說明（id 對應 records.js 的 ACHIEVEMENTS） */
-export const ACH_TEXT = {
-  first: [t('初來乍到'), t('完成第一局遊戲')],
-  f10: [t('小有高度'), t('單人挑戰蓋到 10 層')],
-  f30: [t('摩天大樓'), t('單人挑戰蓋到 30 層')],
-  f60: [t('穿雲而上'), t('單人挑戰蓋到 60 層')],
-  space: [t('太空建築師'), t('單人挑戰蓋到 140 層，進入太空')],
-  combo5: [t('神準連擊'), t('單人挑戰一局內完美連擊 5 次')],
-  vsWin: [t('擊敗電腦'), t('在對電腦輪流中獲勝')],
-  onlineWin: [t('線上高手'), t('在線上對戰中獲勝')],
-};
+  /** 成就名稱與說明（id 對應 records.js 的 ACHIEVEMENTS） */
+  ACH_TEXT = {
+    first: [t('初來乍到'), t('完成第一局遊戲')],
+    f10: [t('小有高度'), t('單人挑戰蓋到 10 層')],
+    f30: [t('摩天大樓'), t('單人挑戰蓋到 30 層')],
+    f60: [t('穿雲而上'), t('單人挑戰蓋到 60 層')],
+    space: [t('太空建築師'), t('單人挑戰蓋到 140 層，進入太空')],
+    combo5: [t('神準連擊'), t('單人挑戰一局內完美連擊 5 次')],
+    vsWin: [t('擊敗電腦'), t('在對電腦輪流中獲勝')],
+    onlineWin: [t('線上高手'), t('在線上對戰中獲勝')],
+  };
+}
+refreshLabels();
+onLangChange(refreshLabels);
 
 export function nick() { return (store.get().nick || '').trim(); }
 export function randomNick() {

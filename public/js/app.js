@@ -20,20 +20,21 @@ let cur = null; // { name, el, destroy?, ...handlers }
 let loadingTimer = 0;
 
 /* ---------------- 路由 ---------------- */
-function go(name, params = {}) {
+function go(name, params = {}, { languageChange = false } = {}) {
   if (cur && cur.destroy) cur.destroy();
-  if (name !== 'lobby' && name !== 'room' && !(name === 'game' && app.online)) net.disconnect();
+  if (!languageChange && name !== 'lobby' && name !== 'room' && !(name === 'game' && app.online)) net.disconnect();
   document.querySelectorAll('.sel-pop').forEach((e) => e.remove());
   rootEl.textContent = '';
   const builders = { home, setup, tutorial, records, lobby, room, game };
   cur = builders[name](params) || {};
   cur.name = name;
+  cur.params = params;
   app.screen = cur;
   rootEl.append(cur.el);
   rootEl.dataset.screen = name;
   Outage.setScreen(name);
   Latency.setActive(CONFIG.onlineAvailable && (name === 'lobby' || name === 'room' || (name === 'game' && !!app.online)));
-  if (window.GameAnalytics) window.GameAnalytics.pageView(name);
+  if (!languageChange && window.GameAnalytics) window.GameAnalytics.pageView(name);
   cur.mount && cur.mount();
   if (name !== 'game') A.setAltitude(0);
   const f = cur.el.querySelector('[data-autofocus]');
@@ -100,9 +101,15 @@ function home() {
 }
 
 /* ---------------- 開局設定（單人／對電腦） ---------------- */
-const SHAPE_OPTS = [{ value: 'off', label: t('一般（方正樓層）') }, { value: 'fixed', label: t('隨機一種形狀（整場相同）') }, { value: 'every', label: t('整場都不規則（每層不同）') }];
-const SHAPE_DESC = { off: t('每層都是標準大小。'), fixed: t('開局隨機決定一種寬窄高矮，整場每層都長這樣。'), every: t('每一層的寬窄高矮都不一樣，越高變化越大。') };
-const TURN_OPTS = R.TURN_LIMITS.map((n) => ({ value: String(n), label: t('{n} 秒', { n }) }));
+let SHAPE_OPTS, SHAPE_DESC, TURN_OPTS;
+function refreshSetupLabels() {
+  SHAPE_OPTS = [{ value: 'off', label: t('一般（方正樓層）') }, { value: 'fixed', label: t('隨機一種形狀（整場相同）') }, { value: 'every', label: t('整場都不規則（每層不同）') }];
+  SHAPE_DESC = { off: t('每層都是標準大小。'), fixed: t('開局隨機決定一種寬窄高矮，整場每層都長這樣。'), every: t('每一層的寬窄高矮都不一樣，越高變化越大。') };
+  TURN_OPTS = R.TURN_LIMITS.map((n) => ({ value: String(n), label: t('{n} 秒', { n }) }));
+}
+refreshSetupLabels();
+onLangChange(refreshSetupLabels);
+
 const turnDesc = () => t('時間到會自動在吊車目前的位置放下，可能因此放偏。');
 const setupMem = { diff: 'normal', ais: ['normal'], shapes: 'off', turnLimit: R.DEFAULT_TURN_SEC };
 function setup({ mode }) {
@@ -169,8 +176,8 @@ function tutorial() {
 }
 
 /* ---------------- 紀錄與成就 ---------------- */
-const SHAPE_NAME = { off: '', fixed: t('・固定形狀'), every: t('・每層不同') };
-function records() {
+function records({ tab = 'rec' } = {}) {
+  const SHAPE_NAME = { off: '', fixed: t('・固定形狀'), every: t('・每層不同') };
   const data = store.get();
   const st = normalize(data);
   const pct = (w, n) => (n ? Math.round((w / n) * 100) + '%' : '—');
@@ -210,11 +217,12 @@ function records() {
     bar.textContent = ''; body.textContent = '';
     for (const [tid, label, build] of tabs) {
       const b = h('button', { type: 'button', role: 'tab', class: 'rec-tab' + (tid === id ? ' on' : ''), 'aria-selected': String(tid === id), onClick: () => show(tid) }, label);
+      b.dataset.tab = tid;
       bar.append(b);
       if (tid === id) body.append(...build());
     }
   };
-  show('rec');
+  show(tab === 'ach' ? 'ach' : 'rec');
   return { el: Page({ title: t('紀錄與成就'), back: { fn: () => go('home') }, children: [bar, body], narrow: true }) };
 }
 
@@ -251,17 +259,35 @@ function openSettings() {
 }
 app.openSettings = openSettings;
 
-/* 語言切換：靜態畫面（首頁、設定、教學、大廳）直接重新載入以完整套用；對局／房間中不打斷，離開後套用 */
+/* 語言切換原地更新文字，保留頁面狀態及對局實例。 */
 onLangChange(() => {
+  const settingsOpen = !!settingsModal;
   if (settingsModal) { settingsModal.close(true); settingsModal = null; }
   const name = app.screen && app.screen.name;
-  if (['home', 'setup', 'tutorial', 'records', 'lobby'].includes(name)) location.reload();
-  else toast(t('語言已切換，離開目前畫面後會完整套用'));
+  if (['home', 'setup', 'tutorial', 'records', 'lobby', 'room'].includes(name)) {
+    const params = name === 'records'
+      ? { tab: cur.el.querySelector('.rec-tab.on')?.dataset.tab }
+      : cur.params;
+    const scroll = [...cur.el.querySelectorAll('.sa-view')].map(el => ({ top: el.scrollTop, left: el.scrollLeft }));
+    const inputs = [...cur.el.querySelectorAll('.tf-input')].map(el => el.value);
+    go(name, params, { languageChange: true });
+    const screen = cur;
+    cur.el.querySelectorAll('.tf-input').forEach((el, i) => { if (inputs[i] != null) el.value = inputs[i]; });
+    requestAnimationFrame(() => {
+      if (cur !== screen) return;
+      screen.el.querySelectorAll('.sa-view').forEach((el, i) => {
+        if (scroll[i]) { el.scrollTop = scroll[i].top; el.scrollLeft = scroll[i].left; }
+      });
+    });
+  } else if (cur.onLanguageChange) cur.onLanguageChange();
+  if (settingsOpen) openSettings();
+  else document.querySelector('.lang-btn')?.focus({ preventScroll: true });
 });
 
 /* ---------------- 線上：共用 ---------------- */
 function connectBanner() {
   const el = h('div', { class: 'net-banner', role: 'status', hidden: true }, t('連線中斷，正在重新連線…'));
+  onLangChange(() => { el.textContent = t('連線中斷，正在重新連線…'); });
   document.body.append(el);
   net.net.onStatus = (st) => {
     el.hidden = !(st === 'down' && app.online);
@@ -555,7 +581,11 @@ function game(p) {
 
 /* ---------------- 右上角設定入口（所有畫面） ---------------- */
 net.net.statusHook = (st) => Outage.status(st);
-onLangChange(() => Latency.refresh());
+onLangChange(() => {
+  Latency.refresh();
+  const gear = document.querySelector('.gear-btn');
+  if (gear) { gear.setAttribute('aria-label', t('設定')); gear.title = t('設定'); }
+});
 document.body.append(h('div', { class: 'gear-wrap' }, LangButton(), IconBtn({ ico: 'toolbox', label: t('設定'), size: 28, cls: 'gear-btn', onClick: () => openSettings() })));
 connectBanner();
 

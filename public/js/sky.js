@@ -5,18 +5,23 @@
  * 固定白天（只靠高度換景）。天體與地球都掛在相機上（rig），所以不論蓋到幾層都不會飛出視野。
  * 單位：n = 目前鏡頭高度換算的樓層數（可為小數）。
  */
-import { t } from './i18n.js';
+import { t, onLangChange } from './i18n.js';
 import * as THREE from '../vendor/three.module.min.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const rand = (a, b) => a + Math.random() * (b - a);
 
-export const STAGES = [
-  [0, t('市區天際線')], [12, t('低空・鳥群')], [22, t('直升機高度')], [34, t('雲層・積雨雲')], [55, t('客機巡航高度')],
-  [80, t('平流層')], [110, t('大氣層邊緣')], [140, t('太空・地球軌道')], [190, t('月球')], [260, t('火星')],
-  [340, t('木星')], [430, t('土星')], [520, t('天王星')], [620, t('銀河')],
-];
+export let STAGES;
+function refreshStageLabels() {
+  STAGES = [
+    [0, t('市區天際線')], [12, t('低空・鳥群')], [22, t('直升機高度')], [34, t('雲層・積雨雲')], [55, t('客機巡航高度')],
+    [80, t('平流層')], [110, t('大氣層邊緣')], [140, t('太空・地球軌道')], [190, t('月球')], [260, t('火星')],
+    [340, t('木星')], [430, t('土星')], [520, t('天王星')], [620, t('銀河')],
+  ];
+}
+refreshStageLabels();
+onLangChange(refreshStageLabels);
 export function stageIndex(n) { let k = 0; for (let i = 0; i < STAGES.length; i++) if (n >= STAGES[i][0]) k = i; return k; }
 
 /** 依 key 表線性內插；rows: [n, v0, v1, ...] */

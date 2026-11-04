@@ -76,7 +76,7 @@ export function GameScreen(cfg) {
   function section(title, body, open = true, extra, cls) {
     const wrap = h('section', { class: 'acc' + (open ? ' open' : '') + (cls ? ' ' + cls : '') });
     const head = h('button', { type: 'button', class: 'acc-head', 'aria-expanded': String(open) }, h('span', null, title), extra || null, h('span', { class: 'acc-caret', 'aria-hidden': 'true' }, '▾'));
-    head.addEventListener('click', () => { const o = !wrap.classList.contains('open'); wrap.classList.toggle('open', o); head.setAttribute('aria-expanded', String(o)); if (o && title === t('聊天室')) { S.unread = 0; syncUnread(); chat.refresh(); } });
+    head.addEventListener('click', () => { const o = !wrap.classList.contains('open'); wrap.classList.toggle('open', o); head.setAttribute('aria-expanded', String(o)); if (o && cls === 'acc-chat') { S.unread = 0; syncUnread(); chat.refresh(); } });
     wrap.append(head, h('div', { class: 'acc-body' }, body));
     return wrap;
   }
@@ -285,30 +285,39 @@ export function GameScreen(cfg) {
 
   /* ---------- 結算 overlay：疊在遊戲畫面上，不卸載 3D 場景 ---------- */
   let resultEl = null;
-  function showResult() {
+  let resultUnlocked = [];
+  function showResult(refresh = false) {
     hideToast();
-    if (destroyed || resultEl) return;
+    if (destroyed || (resultEl && !refresh)) return;
+    const wasReady = refresh && resultEl && resultEl.again.disabled;
+    if (resultEl) { resultEl.remove(); resultEl = null; }
     S.resultShown = true;
-    if (GA) GA.end({ result: S.mode === 'solo' ? (S.summit ? 'complete' : 'dnf') : S.winnerId ? (S.winnerId === S.myId ? 'win' : 'lose') : 'draw', variant: S.shapes }, gaKey);
+    if (!refresh && GA) GA.end({ result: S.mode === 'solo' ? (S.summit ? 'complete' : 'dnf') : S.winnerId ? (S.winnerId === S.myId ? 'win' : 'lose') : 'draw', variant: S.shapes }, gaKey);
     const solo = S.mode === 'solo';
     const me = playerOf(S.myId);
     let title, sub, tone = 'lose';
     if (solo) {
-      store.set({ played: store.get().played + 1 });
-      S.newBest = store.setBest(S.diff, S.peak, S.shapes);
+      if (!refresh) {
+        store.set({ played: store.get().played + 1 });
+        S.newBest = store.setBest(S.diff, S.peak, S.shapes);
+      }
       title = S.summit ? t('登上天際！') : t('挑戰結束'); sub = t('最高蓋到 {peak} 層', { peak: S.peak }); tone = S.summit || S.newBest ? 'win' : 'plain';
     } else if (S.winnerId) {
       const win = S.winnerId === S.myId;
       title = S.role === 'spectator' ? t('{v0} 獲勝', { v0: nameOf(S.winnerId) }) : win ? t('你贏了！') : t('{v0} 獲勝', { v0: nameOf(S.winnerId) });
       sub = S.summit ? t('大家一起登頂，由愛心和得分決勝') : win ? t('你是最後留下來的人') : t('樓倒太多次的人出局了'); tone = win ? 'win' : S.role === 'spectator' ? 'plain' : 'lose';
     } else { title = S.summit ? t('登頂平手！') : t('對局結束'); sub = ''; tone = 'plain'; }
-    let unlocked = [];
-    if (S.role !== 'spectator') {
+    let unlocked = resultUnlocked;
+    if (!refresh && S.role !== 'spectator') {
       const rec = recordGame(store.get(), { mode: solo ? 'solo' : online ? 'online' : 'ai', peak: S.peak, bestCombo: S.bestCombo, win: !!S.winnerId && S.winnerId === S.myId, me }, Date.now());
-      store.set({ stats: rec.stats, ach: rec.ach }); unlocked = rec.unlocked;
+      store.set({ stats: rec.stats, ach: rec.ach });
+      unlocked = rec.unlocked;
+      resultUnlocked = unlocked;
     }
-    (tone === 'win' ? A.sfx.win : A.sfx.lose)();
-    if (tone === 'win') board.confettiAtTop();
+    if (!refresh) {
+      (tone === 'win' ? A.sfx.win : A.sfx.lose)();
+      if (tone === 'win') board.confettiAtTop();
+    }
 
     const rows = h('ul', { class: 'res-list' }, S.players.map((p) => h('li', { class: p.id === S.winnerId ? 'win' : '' },
       h('span', { class: 'dot', style: { background: PLAYER_COLORS[p.seat % PLAYER_COLORS.length] } }), h('span', null, p.name, p.id === S.myId ? t('（你）') : ''),
@@ -335,6 +344,10 @@ export function GameScreen(cfg) {
     resultEl.setAttribute('tabindex', '-1'); // 焦點放在對話框本身，避免玩家連按空白時誤觸「再來一局」
     setTimeout(() => resultEl.focus({ preventScroll: true }), 60);
     resultEl.again = again;
+    if (wasReady) {
+      again.disabled = true;
+      if (S.role === 'player') again.querySelector('.btn-label').textContent = t('已準備，等待房主…');
+    }
   }
 
   async function doAgain(btn) {
@@ -405,6 +418,33 @@ export function GameScreen(cfg) {
   const api = {
     el: root,
     debug: { S, board, get g() { return g; } },
+    onLanguageChange() {
+      renderSummary();
+      updateBanner();
+      syncControls();
+      setWindUI(S.swing);
+      canvas.setAttribute('aria-label', t('疊疊高樓 3D 遊戲畫面：吊車正在放下新的樓層'));
+      aside.setAttribute('aria-label', t('資訊欄'));
+      aside.querySelector('.side-head b').textContent = t('對局資訊');
+      const collapse = aside.querySelector('.side-head .icon-btn');
+      collapse.setAttribute('aria-label', t('收合資訊欄')); collapse.title = t('收合資訊欄');
+      aside.querySelector('.acc-sum .acc-head span').textContent = t('對局摘要');
+      if (chat) {
+        chatSection.querySelector('.acc-head span').textContent = t('聊天室');
+        chat.refreshLanguage();
+      }
+      infoBtn.querySelector('.btn-label').textContent = t('資訊');
+      infoBtn.setAttribute('aria-label', t('資訊'));
+      menuBtn.setAttribute('aria-label', online ? t('離開房間') : t('暫停選單'));
+      menuBtn.title = online ? t('離開房間') : t('暫停選單');
+      heightChip.setAttribute('aria-label', t('目前樓層'));
+      heartsCol.setAttribute('aria-label', t('剩餘愛心'));
+      btnDrop.querySelector('.btn-label').textContent = t('放下');
+      btnDrop.setAttribute('aria-label', t('放下'));
+      btnDrop.querySelector('.keycap').textContent = t('空白');
+      specBar.lastElementChild.textContent = t('觀戰中');
+      if (resultEl) showResult(true);
+    },
     mount() {
       ro.observe(canvas); board.resize(); renderSummary(); updateBanner(); syncControls();
       raf = requestAnimationFrame(tick);
