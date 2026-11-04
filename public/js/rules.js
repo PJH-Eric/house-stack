@@ -85,6 +85,12 @@
   /** 吊車位置：相對於頂層中心的偏移，t 為本回合開始後的秒數。 */
   function swingPos(sw, tSec) { return (sw.bias || 0) + sw.amp * Math.sin(sw.omega * tSec + sw.phase); }
 
+  function releaseDrift(sw, d, dir) {
+    if (!sw.inertia || (dir !== -1 && dir !== 1)) return 0;
+    const x = clamp((d - (sw.bias || 0)) / sw.amp, -1, 1);
+    return sw.inertia * dir * Math.sqrt(1 - x * x);
+  }
+
   /** 求吊車下一次經過偏移 d 的時間（秒，>= tNow）。AI 用來決定何時放下。 */
   function timeToReach(sw, d, tNow) {
     const x = clamp((d - (sw.bias || 0)) / sw.amp, -1, 1);
@@ -205,15 +211,16 @@
       }
       const W = WIND[diffKey];
       const space = n >= spaceAt;
-      return { axis: g.axis(), amp: D.amp, omega: r3(D.speed * speedMul() * (space ? 0.85 : 1)), phase: r3(r() * Math.PI * 2), look: { ...visual(g.turnNo + 1 + g.floors.length * 131), ...shape(n) }, wind, bias: r3(wind * W.bias), drift: r3(wind * W.drift), space, mag: space ? MAG[diffKey] : 0 };
+      const transition = clamp((n - spaceAt - 10) / 10, 0, 1);
+      return { axis: g.axis(), amp: D.amp, omega: r3(D.speed * speedMul()), phase: r3(r() * Math.PI * 2), look: { ...visual(g.turnNo + 1 + g.floors.length * 131), ...shape(n) }, wind, bias: r3(wind * W.bias), drift: r3(wind * W.drift), space, inertia: r3(transition * D.amp * D.speed * 0.12), mag: space ? r3(MAG[diffKey] * (1 - transition)) : 0 };
     };
     g.swingSpec = g.nextSwing();
 
-    function placeAt(d) {
+    function placeAt(d, dir) {
       const dd = clamp(+d || 0, -(D.amp + WIND_LIMIT), D.amp + WIND_LIMIT);
       const top = g.top();
       const ax = g.axis();
-      const drift = g.swingSpec ? g.swingSpec.drift || 0 : 0; // 落下途中被風吹走
+      const drift = g.swingSpec ? (g.swingSpec.drift || 0) + releaseDrift(g.swingSpec, dd, dir) : 0; // 落下途中被風吹走
       let off = dd + drift, perfect = false;
       const mag = g.swingSpec ? g.swingSpec.mag || 0 : 0; // 太空磁吸：偏移被拉回中心一部分
       if (mag) off *= 1 - mag;
@@ -266,7 +273,7 @@
       if (g.over) return null;
       const p = g.currentPlayer();
       const sw = g.swingSpec;
-      const { nf, perfect, d, off, axis, drift, mag } = placeAt(move && move.d);
+      const { nf, perfect, d, off, axis, drift, mag } = placeAt(move && move.d, move && move.dir);
       const look = sw.look;
       const placed = { x: r3(nf.x), z: r3(nf.z), color: look.color, variant: look.variant, w: nf.w, h: nf.h, seat: p.seat, perfect };
       const test = g.floors.concat([placed]);
@@ -352,6 +359,6 @@
 
   return {
     TURN_LIMITS, DEFAULT_TURN_SEC, turnSecFor, FLOOR_H, SKY_FLOORS, PALETTE_COUNT, VARIANT_COUNT, DIFFICULTIES, mulberry32, createGame,
-    swingPos, timeToReach, evaluate, axisFor, clamp, windBase, WIND, SPACE_FLOORS, MAG, SNAP_KEEP, IRR, shapeFor,
+    swingPos, releaseDrift, timeToReach, evaluate, axisFor, clamp, windBase, WIND, SPACE_FLOORS, MAG, SNAP_KEEP, IRR, shapeFor,
   };
 });

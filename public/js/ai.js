@@ -62,9 +62,12 @@
       d = best.c; why = 'probe';
     }
 
-    const tReach = R.timeToReach(game.swingSpec, d, tNow + 0.45); // 至少 0.45 秒「反應時間」
+    const inertia = sw.inertia || 0;
+    const landingSwing = { ...sw, amp: Math.hypot(sw.amp, inertia), phase: sw.phase + Math.atan2(inertia, sw.amp) };
+    const tReach = R.timeToReach(landingSwing, d, tNow + (inertia ? 0.5 : 0.45)); // 至少 0.45 秒「反應時間」
     const thinkMs = Math.max(500, Math.round((tReach - tNow) * 1000));
-    return { d: Math.round(d * 1000) / 1000, thinkMs, why };
+    const dir = Math.sign(Math.cos(sw.omega * tReach + sw.phase));
+    return { d: Math.round(R.swingPos(sw, tReach) * 1000) / 1000, dir, thinkMs, why };
   }
 
   return { chooseMove, SIGMA };

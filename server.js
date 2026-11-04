@@ -88,13 +88,13 @@ function beginTurn(room) {
     let mv;
     try { mv = AI.chooseMove(g, p.ai || 'normal', rng, { tNow: 0 }); } catch (e) { console.error('AI 失敗', e); mv = { d: 0, thinkMs: 1200 }; }
     rm.timer(room, () => {
-      if (room.game === g && g.currentPlayer().id === p.id && room.turn && room.turn.no === no) doDrop(room, p.id, { d: mv.d });
+      if (room.game === g && g.currentPlayer().id === p.id && room.turn && room.turn.no === no) doDrop(room, p.id, mv);
     }, mv.thinkMs);
   } else {
     // 逾時：依伺服器時鐘取吊車當下位置自動放下
     room.turnTimer = rm.timer(room, () => {
       const t = (Date.now() - t0) / 1000;
-      doDrop(room, p.id, { d: T.swingPos(swing, t) });
+      doDrop(room, p.id, { d: T.swingPos(swing, t), dir: Math.sign(Math.cos(swing.omega * t + swing.phase)) });
     }, sec * 1000 + 300);
   }
   pushLobby();
@@ -105,7 +105,7 @@ function doDrop(room, playerId, move) {
   const g = room.game;
   if (g.over || g.currentPlayer().id !== playerId) return false;
   clearTurnTimer(room);
-  const res = g.drop({ d: Number(move && move.d) || 0 });
+  const res = g.drop({ d: Number(move && move.d) || 0, dir: move && move.dir });
   if (!res) return false;
   room.turn = null;
   if (res.over) room.status = 'ended';

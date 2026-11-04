@@ -140,9 +140,9 @@ export function GameScreen(cfg) {
     const space = !!(sw && sw.space);
     windChip.classList.toggle('calm', lvl === 0 && !space); windChip.classList.toggle('space', space); windArrow.style.transform = w < 0 ? 'scaleX(-1)' : '';
     windChip.classList.toggle('windy', lvl > 0 && !space);
-    windTxt.textContent = space ? t('無重力・磁吸') : lvl === 0 ? t('無風') : t('風 {lvl} 級', { lvl });
+    windTxt.textContent = space ? t('無重力漂浮') : lvl === 0 ? t('無風') : t('風 {lvl} 級', { lvl });
     [...windBars.children].forEach((b, i) => b.classList.toggle('on', i < lvl));
-    if (space) { windChip.setAttribute('aria-label', t('太空無重力：樓層會被磁力吸向中心，下落與搖晃都變慢')); return; }
+    if (space) { windChip.setAttribute('aria-label', t('太空無重力：磁吸漸退後，放手時要預留漂移距離')); return; }
     windChip.setAttribute('aria-label', lvl === 0 ? t('目前無風') : t('{v0}吹，風力 {lvl} 級（最大 5 級）', { v0: w > 0 ? t('向右') : t('向左'), lvl }));
   }
   const topbar = h('div', { class: 'topbar' }, h('div', { class: 'tb-left' }, infoBtn, menuBtn), h('div', { class: 'tb-center' }, banner, timerEl), h('div', { class: 'tb-right' }, windChip, h('div', { class: 'stability-group' }, starIco, stabMini)));
@@ -168,10 +168,10 @@ export function GameScreen(cfg) {
     if (performance.now() - S.turnStartPerf < 380) return; // 吊車剛換手時避免誤觸
     S.canAct = false; syncControls();
     if (board.turn) board.turn.active = false;
-    const d = board.currentD();
+    const move = { d: board.currentD(), dir: board.releaseDir };
     A.sfx.drop(); A.vibrate(14);
-    if (!online) { handleDrop(g.drop({ d })); return; }
-    emit('game:drop', { d }, 6000).then((r) => { if (!r.ok && !destroyed) { S.canAct = S.turnId === S.myId && !S.over; if (board.turn) board.turn.active = S.canAct; syncControls(); if (r.msg) toast(r.msg); } });
+    if (!online) { handleDrop(g.drop(move)); return; }
+    emit('game:drop', move, 6000).then((r) => { if (!r.ok && !destroyed) { S.canAct = S.turnId === S.myId && !S.over; if (board.turn) board.turn.active = S.canAct; syncControls(); if (r.msg) toast(r.msg); } });
   }
   // 點螢幕任何位置都能「放下」（滑鼠左鍵／觸控），但按鈕、資訊欄、聊天、彈窗、結算層、選單等互動元素自己處理
   const NO_TAP = 'button, a, input, textarea, [role="button"], [role="menu"], [role="menuitemradio"], [role="dialog"], [role="alertdialog"], .side, .modal, .modal-mask, .result, .sel-pop, .gear-wrap, .toast, .sa-bar, .tf';
@@ -230,7 +230,7 @@ export function GameScreen(cfg) {
     if (destroyed || token !== turnToken) return;
     S.thinking = false;
     A.sfx.drop();
-    handleDrop(g.drop({ d: mv.d }));
+    handleDrop(g.drop(mv));
   }
 
   function handleDrop(res) {

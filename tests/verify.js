@@ -179,6 +179,21 @@ async function test(name, fn) {
     for (let i = 0; i < 7; i++) g2.drop({ d: 0 });
     assert.ok(g2.drop({ d: 0.3 }).perfect, '0.3 × 0.8 = 0.24 ≤ 容許 0.27 → 完美');
     assert.strictEqual(T.SPACE_FLOORS, 140);
+    const orbit = T.createGame({ seed: 4, difficulty: 'normal', wind: false });
+    while (orbit.height() < 139) orbit.drop({ d: 0 });
+    const speed = orbit.swingSpec.omega;
+    for (let height = 140; height <= 161; height++) {
+      orbit.drop({ d: 0 });
+      const sw = orbit.swingSpec;
+      assert.strictEqual(sw.omega, speed);
+      const progress = Math.min(1, Math.max(0, (height - 150) / 10));
+      assert.ok(Math.abs(sw.mag - T.MAG.normal * (1 - progress)) < 0.001);
+      assert.ok(Math.abs(sw.inertia - 0.792 * progress) < 0.001);
+    }
+    const drift = orbit.swingSpec.inertia;
+    assert.strictEqual(T.releaseDrift(orbit.swingSpec, orbit.swingSpec.amp, 1), 0);
+    assert.strictEqual(orbit.drop({ d: 0, dir: -1 }).off, -drift);
+    assert.strictEqual(orbit.drop({ d: 0, dir: 1 }).off, drift);
   });
   await test('電腦在太空與不規則樓層下仍能正常蓋樓（困難：50 層內不會全倒）', () => {
     const g = T.createGame({ seed: 8, difficulty: 'normal', lives: 9, shapes: 'every', spaceFloors: 30 });

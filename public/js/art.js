@@ -436,7 +436,9 @@ export class Board {
   swingNow() {
     if (!this.turn) return 0;
     const t = (Date.now() + (this.turn.offset || 0) - this.turn.t0) / 1000;
-    return R.swingPos(this.turn.swing, t);
+    const sw = this.turn.swing;
+    this.releaseDir = Math.sign(Math.cos(sw.omega * t + sw.phase));
+    return R.swingPos(sw, t);
   }
   /** 目前吊車（畫面上）所在偏移；本機玩家放下時送出這個值。 */
   currentD() { return this.trolleyD; }
@@ -601,7 +603,7 @@ export class Board {
     this.guideGroup.visible = !!showGuide;
     if (showGuide) {
       const topY = this.topY() + 0.06;
-      const sw = this.turn.swing || {}, drift = sw.drift || 0, eff = (this.trolleyD + drift) * (1 - (sw.mag || 0)); // 風與太空磁吸都算進預測落點
+      const sw = this.turn.swing || {}, drift = (sw.drift || 0) + R.releaseDrift(sw, this.trolleyD, this.releaseDir), eff = (this.trolleyD + drift) * (1 - (sw.mag || 0)); // 風與太空磁吸都算進預測落點
       const perfect = Math.abs(eff) <= this.cfg.tol;
       const fw = this.cfg.size * ((sw.look && sw.look.w) || 1), gb = this.guideBars; // 輔助框跟著這層樓的寬度
       gb[0].scale.x = fw; gb[1].scale.x = fw; gb[2].position.x = fw / 2; gb[3].position.x = -fw / 2;
