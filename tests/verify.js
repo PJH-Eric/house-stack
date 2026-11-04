@@ -188,12 +188,48 @@ async function test(name, fn) {
       assert.strictEqual(sw.omega, speed);
       const progress = Math.min(1, Math.max(0, (height - 150) / 10));
       assert.ok(Math.abs(sw.mag - T.MAG.normal * (1 - progress)) < 0.001);
-      assert.ok(Math.abs(sw.inertia - 0.792 * progress) < 0.001);
+      const growth = 1 + 0.25 * Math.max(0, (height - 160) / 40);
+      assert.ok(Math.abs(sw.inertia - 0.792 * progress * growth) < 0.001);
     }
     const drift = orbit.swingSpec.inertia;
     assert.strictEqual(T.releaseDrift(orbit.swingSpec, orbit.swingSpec.amp, 1), 0);
     assert.strictEqual(orbit.drop({ d: 0, dir: -1 }).off, -drift);
-    assert.strictEqual(orbit.drop({ d: 0, dir: 1 }).off, drift);
+    const nextDrift = orbit.swingSpec.inertia;
+    assert.strictEqual(orbit.drop({ d: 0, dir: 1 }).off, nextDrift);
+  });
+  await test('太空深處三階段：漂移漸增、回合節奏、難度上限與同步落點', () => {
+    for (const difficulty of Object.keys(T.DIFFICULTIES)) {
+      const a = mk({ difficulty, seed: 42 });
+      const b = mk({ difficulty, seed: 42 });
+      const base = a.D.amp * a.D.speed * 0.12;
+      const limit = { kids: 0.16, easy: 0.22, normal: 0.3, hard: 0.38, mythic: 0.45 }[difficulty];
+      let previous = 0;
+      while (a.height() <= 500) {
+        const height = a.height();
+        const sw = a.swingSpec;
+        assert.deepStrictEqual(sw, b.swingSpec, '相同種子與操作同步');
+        if (height >= 160 && height <= 200) {
+          assert.ok(sw.inertia >= previous, '第一階段持續增加');
+          previous = sw.inertia;
+        }
+        if (height === 200) assert.ok(Math.abs(sw.inertia - base * 1.25) < 0.001);
+        if (height >= 200) {
+          assert.ok(sw.inertia >= base * 1.25 * (1 - limit) - 0.001);
+          assert.ok(sw.inertia <= base * 1.25 * (1 + limit) + 0.001);
+          const dir = height % 2 ? -1 : 1;
+          const expected = T.releaseDrift(sw, 0, dir);
+          assert.ok(Math.abs(expected) <= sw.inertia);
+        }
+        a.drop({ d: 0 }); b.drop({ d: 0 });
+      }
+      a.turnNo += 12;
+      const cycle = a.nextSwing();
+      a.turnNo -= 12;
+      assert.strictEqual(cycle.inertia, a.nextSwing().inertia, '深空封頂後以十二回合循環');
+      const move = AI.chooseMove(a, 'hard', T.mulberry32(1), { tNow: 0 });
+      const release = T.swingPos(a.swingSpec, move.thinkMs / 1000);
+      assert.ok(Math.abs(release - move.d) < 0.02, '深空 AI 在實際吊車位置放手');
+    }
   });
   await test('電腦在太空與不規則樓層下仍能正常蓋樓（困難：50 層內不會全倒）', () => {
     const g = T.createGame({ seed: 8, difficulty: 'normal', lives: 9, shapes: 'every', spaceFloors: 30 });

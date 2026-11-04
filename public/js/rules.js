@@ -212,7 +212,22 @@
       const W = WIND[diffKey];
       const space = n >= spaceAt;
       const transition = clamp((n - spaceAt - 10) / 10, 0, 1);
-      return { axis: g.axis(), amp: D.amp, omega: r3(D.speed * speedMul()), phase: r3(r() * Math.PI * 2), look: { ...visual(g.turnNo + 1 + g.floors.length * 131), ...shape(n) }, wind, bias: r3(wind * W.bias), drift: r3(wind * W.drift), space, inertia: r3(transition * D.amp * D.speed * 0.12), mag: space ? r3(MAG[diffKey] * (1 - transition)) : 0 };
+      // 太空深度以入口為基準，測試用的自訂入口也沿用相同過渡距離。
+      const depth = n - spaceAt;
+      const growth = 1 + 0.25 * clamp((depth - 20) / 40, 0, 1);
+      const rhythmIntro = clamp((depth - 60) / 50, 0, 1);
+      const deepProgress = clamp((depth - 110) / 100, 0, 1);
+      const rhythmLimit = { kids: 0.16, easy: 0.22, normal: 0.3, hard: 0.38, mythic: 0.45 }[diffKey];
+      const rhythmRange = rhythmIntro * (0.12 + (rhythmLimit - 0.12) * deepProgress);
+      const rhythmPhase = mulberry32((seed ^ 0x6a09e667) >>> 0)() * Math.PI * 2;
+      const rhythm = 1 + rhythmRange * Math.sin(g.turnNo * Math.PI / 6 + rhythmPhase);
+      const inertia = r3(transition * D.amp * D.speed * 0.12 * growth * rhythm);
+      return {
+        axis: g.axis(), amp: D.amp, omega: r3(D.speed * speedMul()), phase: r3(r() * Math.PI * 2),
+        look: { ...visual(g.turnNo + 1 + g.floors.length * 131), ...shape(n) },
+        wind, bias: r3(wind * W.bias), drift: r3(wind * W.drift), space, inertia,
+        mag: space ? r3(MAG[diffKey] * (1 - transition)) : 0,
+      };
     };
     g.swingSpec = g.nextSwing();
 
