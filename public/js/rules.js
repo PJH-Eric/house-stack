@@ -217,7 +217,7 @@
       const depth = n - spaceAt;
       const growth = 1 + 0.25 * clamp((depth - 20) / 40, 0, 1);
       const rhythmIntro = clamp((depth - 60) / 50, 0, 1);
-      const deepProgress = clamp((depth - 110) / 100, 0, 1);
+      const deepProgress = clamp((depth - 110) / 83, 0, 1); // 預設 250～333 層完成幅度過渡
       const rhythmLimit = { kids: 0.16, easy: 0.22, normal: 0.3, hard: 0.38, mythic: 0.45 }[diffKey];
       const rhythmRange = rhythmIntro * (0.12 + (rhythmLimit - 0.12) * deepProgress);
       const rhythmPhase = mulberry32((seed ^ 0x6a09e667) >>> 0)() * Math.PI * 2;

@@ -228,6 +228,22 @@ async function test(name, fn) {
       assert.ok(Math.abs(release - move.d) < 0.02, '深空 AI 在實際吊車位置放手');
     }
   });
+  await test('250～333 層完成漂移幅度過渡，333 層起幅度封頂並接續縮短循環', () => {
+    for (const difficulty of Object.keys(T.DIFFICULTIES)) {
+      const g = mk({ difficulty, seed: 42 });
+      const limit = { kids: 0.16, easy: 0.22, normal: 0.3, hard: 0.38, mythic: 0.45 }[difficulty];
+      const phase = T.mulberry32((42 ^ 0x6a09e667) >>> 0)() * Math.PI * 2;
+      for (const height of [250, 291, 332, 333, 334, 350, 666]) {
+        g.floors = Array.from({ length: height }, () => ({ ...g.floors[0] }));
+        const sw = g.nextSwing();
+        const range = 0.12 + (limit - 0.12) * Math.min(1, (height - 250) / 83);
+        const expected = g.D.amp * g.D.speed * 0.12 * 1.25 * (1 + range * Math.sin(phase));
+        assert.ok(Math.abs(sw.inertia - expected) < 0.001, difficulty + '／' + height + ' 層漂移幅度');
+        if (height <= 333) assert.strictEqual(sw.orbitPeriod, 12);
+        else assert.ok(sw.orbitPeriod < 12);
+      }
+    }
+  });
   await test('333／666／999 里程碑：節奏、擺幅、完美容許與簡單難度減半', () => {
     for (const difficulty of Object.keys(T.DIFFICULTIES)) {
       const g = mk({ difficulty, seed: 42 });
