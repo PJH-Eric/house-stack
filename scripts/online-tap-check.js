@@ -14,10 +14,21 @@ let bad = 0; const ok = (c, m) => { if (!c) { bad++; console.log('✘ ' + m); } 
   const inv = await host.evaluate(() => { const v = window.__app.app.online.view; return { id: v.id, spec: v.invite.spectator }; });
   await spec.goto(`${BASE}?room=${inv.id}&t=${inv.spec}`); await spec.waitForTimeout(1000);
   await spec.getByRole('button', { name: /確認並觀戰/ }).click(); await spec.waitForSelector('.room-page');
+  // 本測試驗證點擊權限，保留足夠時間讓三個軟體 WebGL 客戶端完成操作。
+  await host.evaluate(async () => { const n = await import('./js/net.js'); await n.emit('room:settings', { turnLimit: 15 }); });
   await guest.evaluate(async () => { const n = await import('./js/net.js'); await n.emit('room:ready', { ready: true }); });
   await host.waitForFunction(() => window.__app.app.view?.canStart?.ok || window.__app.app.online.view.canStart.ok, null, { timeout: 8000 });
   await host.getByRole('button', { name: '開始對局' }).click();
   for (const p of [host, guest, spec]) await p.waitForSelector('.game', { timeout: 40000 });
+  for (const p of [host, guest, spec]) await p.evaluate(() => {
+    const { board } = window.__app.app.screen.debug;
+    const render = board.render.bind(board);
+    let last = 0;
+    board.render = () => {
+      const now = performance.now();
+      if (now - last >= 100) { last = now; render(); }
+    };
+  });
   await sleep(2500);
   const state = (p) => p.evaluate(() => { const d = window.__app.app.screen.debug; return { can: d.S.canAct && !d.board.busy, floors: d.S.floors ?? null, turn: d.S.turnId }; });
   // 找出目前輪到的人
@@ -36,6 +47,11 @@ let bad = 0; const ok = (c, m) => { if (!c) { bad++; console.log('✘ ' + m); } 
   const inp = await actor.$('.game .tf-input'); 
   if (inp) { await inp.focus(); await actor.touchscreen.tap(700, 700); await sleep(400);
     ok(await actor.evaluate(() => window.__sent) === 0 && await actor.evaluate(() => document.activeElement.tagName !== 'INPUT'), '輸入框聚焦時點外面只失焦、不放下'); await sleep(700); }
+  // 負向操作檢查可能跨過一個回合，正向檢查須等到該玩家的新回合。
+  await actor.waitForFunction(() => {
+    const { S, board } = window.__app.app.screen.debug;
+    return S.canAct && !board.busy && Date.now() < S.deadline - 7000 && performance.now() - S.turnStartPerf >= 380;
+  }, null, { timeout: 45000 });
   await actor.touchscreen.tap(700, 700);
   await actor.waitForFunction(() => window.__sent >= 1, null, { timeout: 4000 }).catch(() => {});
   ok(await actor.evaluate(() => window.__sent) === 1, '輪到的玩家點螢幕任何位置放下');

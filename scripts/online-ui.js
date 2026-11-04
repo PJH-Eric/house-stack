@@ -67,6 +67,16 @@ const ok = (c, m) => { if (!c) { bad++; console.log('✘ ' + m); } else console.
     await shot(host, 'room-full');
     await host.getByRole('button', { name: '開始對局' }).click();
     for (const p of [host, guest, spec]) await p.waitForSelector('.game', { timeout: 40000 });
+    // 多客戶端使用軟體 WebGL 時限制重繪頻率，保留真實輸入、同步與計時。
+    for (const p of [host, guest, spec]) await p.evaluate(() => {
+      const { board } = window.__app.app.screen.debug;
+      const render = board.render.bind(board);
+      let last = 0;
+      board.render = () => {
+        const now = performance.now();
+        if (now - last >= 100) { last = now; render(); }
+      };
+    });
     ok(true, '三個客戶端同時進入對局畫面');
     await sleep(2500);
     const taps = async (p) => { const can = await p.evaluate(() => { const d = window.__app.app.screen.debug; return d.S.canAct && !d.board.busy; }); return can; };
