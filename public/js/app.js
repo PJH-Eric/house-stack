@@ -37,6 +37,7 @@ function go(name, params = {}, { languageChange = false } = {}) {
   if (!languageChange && window.GameAnalytics) window.GameAnalytics.pageView(name);
   cur.mount && cur.mount();
   if (name !== 'game') A.setAltitude(0);
+  if (lobbyChat) { lobbyChat.setConnected(net.net.connected); lobbyChat.refresh(); }
   const f = cur.el.querySelector('[data-autofocus]');
   f && f.focus({ preventScroll: true });
   if (name !== 'home' && !(history.state && history.state.app)) { try { history.pushState({ app: true }, ''); } catch (e) { /* ignore */ } } // 讓手機的「返回」鍵先退回上一層，而不是直接離開網站
@@ -236,6 +237,29 @@ function applySettings(s) {
 store.subscribe(applySettings);
 applySettings(store.get());
 
+/* ---------------- 線上大廳聊天室（左下氣泡） ---------------- */
+const lobbyChat = window.LobbyChat ? window.LobbyChat.create({
+  game: 'house-stack',
+  active: () => !!cur && cur.name === 'lobby' && CONFIG.onlineAvailable,
+  getName: () => nick() || ensureNick(),
+  setName: (n) => { store.set({ nick: n.slice(0, 12) }); const inp = cur && cur.name === 'lobby' && cur.el.querySelector('input'); if (inp) inp.value = n.slice(0, 12); },
+  join: (name) => net.emitQuiet('lobbychat:join', { name }),
+  leave: () => net.emitQuiet('lobbychat:leave', {}),
+  send: (text, name) => net.emitQuiet('lobbychat:send', { text, name }),
+  joinRoom: async (code) => {
+    A.unlock();
+    const res = await net.emit('room:join', { roomId: code, role: 'player', name: nick() || ensureNick() });
+    if (!res.ok) return toast(res.code === 'closed' ? t('這個房間已結束') : (res.msg || t('加入失敗')));
+    enterRoom(res);
+  },
+}) : null;
+if (lobbyChat) {
+  net.on('lobbychat:history', (p) => lobbyChat.history(p.history, p.online));
+  net.on('lobbychat:msg', (p) => lobbyChat.add(p.msg));
+  net.on('lobbychat:online', (p) => lobbyChat.online(p.online));
+  net.on('lobbychat:error', (p) => lobbyChat.error(p.code));
+}
+
 let settingsModal = null;
 function openSettings() {
   if (settingsModal) return;
@@ -246,14 +270,15 @@ function openSettings() {
     vib: Toggle({ label: t('震動'), value: s.vibrate, hint: t('放下與掉落時震動（需裝置支援）'), onChange: (v) => store.set({ vibrate: v }) }),
     rm: Toggle({ label: t('減少動態'), value: s.reduceMotion, hint: t('關閉畫面晃動、灰塵、星星與紙花'), onChange: (v) => store.set({ reduceMotion: v }) }),
     guide: Toggle({ label: t('落點導引線'), value: s.guide, hint: t('顯示樓層落下的位置（對準時變綠色）'), onChange: (v) => store.set({ guide: v }) }),
+    lc: lobbyChat ? Toggle({ label: lobbyChat.text('set'), value: lobbyChat.isEnabled(), hint: lobbyChat.text('setSub'), onChange: (v) => lobbyChat.setEnabled(v) }) : null,
   };
   const mv = Slider({ label: t('音樂音量'), value: s.musicVol, min: 0, max: 100, step: 5, format: (v) => v + '%', onChange: (v) => store.set({ musicVol: v }) });
   const sv = Slider({ label: t('音效音量'), value: s.sfxVol, min: 0, max: 100, step: 5, format: (v) => v + '%', onChange: (v) => { store.set({ sfxVol: v }); } });
   sv.addEventListener('pointerup', () => A.sfx.tock(0.6));
-  const body = [h('h3', { class: 'set-h' }, t('聲音')), tg.music, mv, tg.sfx, sv, h('h3', { class: 'set-h' }, t('操作與畫面')), tg.vib, tg.rm, tg.guide];
+  const body = [h('h3', { class: 'set-h' }, t('聲音')), tg.music, mv, tg.sfx, sv, h('h3', { class: 'set-h' }, t('操作與畫面')), tg.vib, tg.rm, tg.guide].concat(tg.lc ? [tg.lc] : []);
   settingsModal = Modal({
     title: t('設定'), body,
-    actions: [Btn({ label: t('恢復預設'), onClick: () => { store.reset(); settingsModal.close(true); settingsModal = null; openSettings(); } }), Btn({ label: t('完成'), kind: 'primary', onClick: () => settingsModal.close() })],
+    actions: [Btn({ label: t('恢復預設'), onClick: () => { store.reset(); if (lobbyChat) lobbyChat.setEnabled(true); settingsModal.close(true); settingsModal = null; openSettings(); } }), Btn({ label: t('完成'), kind: 'primary', onClick: () => settingsModal.close() })],
     onClose: () => { settingsModal = null; },
   });
 }
@@ -580,7 +605,7 @@ function game(p) {
 }
 
 /* ---------------- 右上角設定入口（所有畫面） ---------------- */
-net.net.statusHook = (st) => Outage.status(st);
+net.net.statusHook = (st) => { Outage.status(st); if (lobbyChat) lobbyChat.setConnected(st === 'up'); };
 onLangChange(() => {
   Latency.refresh();
   const gear = document.querySelector('.gear-btn');

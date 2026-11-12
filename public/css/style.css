@@ -578,3 +578,12 @@ html[lang="en"] .logo-blk { width: auto; min-width: 40px; height: 46px; padding:
 .res-ach li { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 8px; padding: 6px 10px; border-radius: 10px; background: #fff3c2; border: 2px solid var(--yellow); }
 .res-ach small { color: var(--ink-2); font-weight: 700; }
 .ach > div { flex: 1; min-width: 0; }
+
+/* ---------- 大廳聊天室：套用疊疊高樓配色 ---------- */
+body .lc-root {
+  --lc-accent: var(--teal); --lc-accent-ink: #fff;
+  --lc-panel-bg: var(--paper); --lc-panel-solid: var(--paper);
+  --lc-ink: var(--ink); --lc-muted: var(--ink-2); --lc-line: var(--paper-3);
+  --lc-field-bg: #fff; --lc-sys-bg: var(--paper-2); --lc-name: #1a7f9c;
+  --lc-font: var(--font); --lc-radius: var(--radius); --lc-z: 150;
+}

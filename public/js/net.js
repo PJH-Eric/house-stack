@@ -58,6 +58,10 @@ export function getSocket() {
   for (const ev of ['room:state', 'room:chat', 'room:closed', 'room:kicked', 'game:start', 'game:turn', 'game:drop', 'game:preview', 'game:forfeit', 'lobby:list', 'lobby:online']) {
     socket.on(ev, (d) => listeners.get(ev) && listeners.get(ev)(loc(d)));
   }
+  /* 大廳聊天是玩家原文，不做伺服器訊息翻譯 */
+  for (const ev of ['lobbychat:history', 'lobbychat:msg', 'lobbychat:online', 'lobbychat:error']) {
+    socket.on(ev, (d) => listeners.get(ev) && listeners.get(ev)(d));
+  }
   return socket;
 }
 

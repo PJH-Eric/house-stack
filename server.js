@@ -26,6 +26,8 @@ const originCheck = (origin, cb) => {
   cb(null, false);
 };
 const io = new Server(server, { cors: { origin: originCheck, methods: ['GET', 'POST'] }, pingInterval: 10000, pingTimeout: 12000 });
+/* 大廳聊天室（與房間聊天分開；最近 50 則只存在記憶體） */
+const lobbyChat = require('./lib/lobby-chat.js').attachSocketIo(io);
 
 app.disable('x-powered-by');
 app.use((req, res, next) => {
@@ -186,6 +188,7 @@ io.on('connection', (socket) => {
     if (rm.rooms.size >= MAX_ROOMS) return fail(cb, 'full', '伺服器房間已滿，請稍後再試');
     const { room, member } = rm.createRoom({ sid, name: d.name, maxPlayers: num(d.maxPlayers, 4), difficulty: d.difficulty, shapes: d.shapes, turnLimit: num(d.turnLimit, T.DEFAULT_TURN_SEC) });
     enter(room, member, null, cb);
+    lobbyChat.roomOpened({ code: room.id, host: member.name });
   });
 
   socket.on('room:join', (d = {}, cb) => {
@@ -202,6 +205,7 @@ io.on('connection', (socket) => {
     }
     const { room, member } = rm.createRoom({ sid, name: d.name });
     enter(room, member, null, cb);
+    lobbyChat.roomOpened({ code: room.id, host: member.name });
   });
 
   socket.on('room:resume', (d = {}, cb) => {
