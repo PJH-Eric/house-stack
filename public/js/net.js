@@ -5,6 +5,7 @@ import { app } from './core.js';
 
 let socket = null;
 const listeners = new Map();
+const pending = new Set();
 export const net = { connected: false, ever: false, onStatus: null, statusHook: null };
 const status = (v) => { net.onStatus && net.onStatus(v); net.statusHook && net.statusHook(v); };
 const SESSION_KEY = 'house-stack:session';
@@ -29,6 +30,7 @@ function loc(d, depth = 0) {
 export function on(ev, fn) { listeners.set(ev, fn); }
 
 export function disconnect() {
+  for (const cancel of [...pending]) cancel();
   if (socket) socket.disconnect();
   socket = null;
   net.connected = false;
@@ -39,16 +41,25 @@ export function getSocket() {
   if (!CONFIG.serverUrl) return null;
   if (socket) return socket;
   socket = window.io(CONFIG.serverUrl, { transports: ['websocket', 'polling'], reconnectionDelay: 700, reconnectionDelayMax: 3500 });
+  const currentSocket = socket;
   socket.on('connect', () => {
     const was = net.ever && !net.connected;
     net.connected = true; net.ever = true;
     status('up');
     const s = loadSession();
     if (was && s && app.online) {
+      const online = app.online;
       socket.emit('room:resume', s, (r0) => {
+        if (socket !== currentSocket || app.online !== online) return;
         const r = loc(r0);
         if (r && r.ok) { app.online.memberId = r.memberId; app.online.key = r.key; listeners.get('room:state') && listeners.get('room:state')(r.view); }
         else { saveSession(null); listeners.get('lost') && listeners.get('lost')(r && r.msg); }
+      });
+    } else if (was && !app.online) {
+      socket.emit('lobby:watch', {}, (r) => {
+        if (socket !== currentSocket || app.online || !r || !r.ok) return;
+        listeners.get('lobby:list') && listeners.get('lobby:list')(r.rooms);
+        listeners.get('lobby:online') && listeners.get('lobby:online')(r.online);
       });
     }
     listeners.get('connect') && listeners.get('connect')();
@@ -70,8 +81,23 @@ export function emit(ev, data, timeout = 9000) {
     const s = getSocket();
     if (!s) return resolve({ ok: false, code: 'offline', msg: t('尚未設定線上伺服器') });
     let done = false;
-    const timer = setTimeout(() => { if (!done) { done = true; resolve({ ok: false, code: 'timeout', msg: t('伺服器沒有回應（免費主機喚醒中，請稍候再試）') }); } }, timeout);
-    s.emit(ev, data, (r) => { if (done) return; done = true; clearTimeout(timer); resolve(loc(r) || { ok: false }); });
+    const finish = (r) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      s.off('connect', send);
+      pending.delete(cancel);
+      resolve(r);
+    };
+    const send = () => {
+      if (!done && socket === s && s.connected) s.emit(ev, data, (r) => finish(loc(r) || { ok: false }));
+    };
+    const cancel = () => finish({ ok: false, code: 'offline' });
+    const timer = setTimeout(() => finish({ ok: false, code: 'timeout', msg: t('伺服器沒有回應（免費主機喚醒中，請稍候再試）') }), timeout);
+    pending.add(cancel);
+    // 連上才送出，避免逾時或離開畫面後，傳輸層重送已放棄的建房／加入請求。
+    if (s.connected) send();
+    else s.once('connect', send);
   });
 }
 export function emitQuiet(ev, data) { if (socket && socket.connected) socket.emit(ev, data); }

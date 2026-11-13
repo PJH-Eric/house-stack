@@ -51,7 +51,7 @@ const until = async (fn, ms = 20000, label = '') => {
     }
     { // 建房頻率限制：每個連線 10 秒最多 5 間
       const f = await client(); let okN = 0, lastCode = '';
-      for (let i = 0; i < 7; i++) { const r = await emit(f, 'room:create', { name: 'Spam' }); if (r.ok) okN++; else lastCode = r.code; }
+      for (let i = 0; i < 7; i++) { const r = await emit(f, 'room:create', { name: 'Spam' }); if (r.ok) { okN++; await emit(f, 'room:leave', {}); } else lastCode = r.code; }
       assert.strictEqual(okN, 5); assert.strictEqual(lastCode, 'rate'); f.close();
       step('連續建房被限速（5 間後回 rate）');
     }

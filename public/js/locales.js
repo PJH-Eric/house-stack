@@ -317,6 +317,7 @@ export const EN = {
   "伺服器房間已滿，請稍後再試": "The server has too many rooms; please try again later",
   "房間已不存在或已結束": "The room no longer exists or has ended",
   "尚未加入房間": "You have not joined a room",
+  "請先離開目前房間": "Please leave your current room first",
   "無法新增電腦": "Cannot add a computer",
   "目前不能入座": "Cannot take a seat right now",
   "還沒輪到你": "It is not your turn",

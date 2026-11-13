@@ -60,6 +60,7 @@ function pushState(room) {
 const rm = new RoomManager({
   onEvent(room, ev, data) {
     if (ev === 'state') { pushState(room); pushLobby(); }
+    else if (ev === 'removed') afterRemoved(room, data);
     else if (ev === 'chat') io.to(room.id).emit('room:chat', data);
     else if (ev === 'closed') {
       io.to(room.id).emit('room:closed', data);
@@ -141,6 +142,7 @@ process.on('unhandledRejection', (e) => console.error('[未處理的拒絕]', e 
 
 io.on('connection', (socket) => {
   const sid = socket.id;
+  pushLobby();
   // 統一輸入防護：事件資料不是一般物件（null、字串、陣列…）就當成空物件；沒帶回呼就補空函式；處理中的例外只回報失敗，不讓整個伺服器掛掉
   const rawOn = socket.on.bind(socket);
   socket.on = (ev, fn) => (ev === 'disconnect' ? rawOn(ev, fn) : rawOn(ev, (...args) => {
@@ -186,7 +188,9 @@ io.on('connection', (socket) => {
     createBucket = now - createBucket.t > 10000 ? { n: 0, t: now } : createBucket;
     if (++createBucket.n > 5) return fail(cb, 'rate', '建立房間太頻繁，請稍後再試');
     if (rm.rooms.size >= MAX_ROOMS) return fail(cb, 'full', '伺服器房間已滿，請稍後再試');
-    const { room, member } = rm.createRoom({ sid, name: d.name, maxPlayers: num(d.maxPlayers, 4), difficulty: d.difficulty, shapes: d.shapes, turnLimit: num(d.turnLimit, T.DEFAULT_TURN_SEC) });
+    const r = rm.createRoom({ sid, name: d.name, maxPlayers: num(d.maxPlayers, 4), difficulty: d.difficulty, shapes: d.shapes, turnLimit: num(d.turnLimit, T.DEFAULT_TURN_SEC) });
+    if (r.ok === false) return fail(cb, r.code, '請先離開目前房間');
+    const { room, member } = r;
     enter(room, member, null, cb);
     lobbyChat.roomOpened({ code: room.id, host: member.name });
   });
@@ -198,11 +202,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room:quick', (d = {}, cb) => {
+    if (rm.locate(sid)) return fail(cb, 'already_in_room', '請先離開目前房間');
     const open = rm.findOpenRoom();
     if (open) {
       const r = rm.join({ sid, name: d.name, roomId: open.id, role: 'player' });
       if (r.ok) return enter(r.room, r.member, r.converted, cb);
     }
+    if (rm.rooms.size >= MAX_ROOMS) return fail(cb, 'full', '伺服器房間已滿，請稍後再試');
     const { room, member } = rm.createRoom({ sid, name: d.name });
     enter(room, member, null, cb);
     lobbyChat.roomOpened({ code: room.id, host: member.name });
@@ -271,15 +277,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     pushLobby();
-    const loc = rm.markDisconnected(sid);
-    if (!loc) return;
-    const { room, member } = loc;
-    if (member.role === 'spectator') { afterRemoved(room, rm.removeMember(room, member.id, '離開了房間')); return; }
-    // 玩家 30 秒內可重新連線（room:resume），逾時視為離場
-    rm.timer(room, () => {
-      const m = room.members.get(member.id);
-      if (m && !m.connected) afterRemoved(room, rm.removeMember(room, member.id, '斷線超過 30 秒，已離場'));
-    }, 30000);
+    rm.markDisconnected(sid);
   });
 });
 
