@@ -25,6 +25,9 @@ fs.writeFileSync(path.join(dist, '.nojekyll'), '');
 /* SEO 與 GA4 只寫進 dist/（不改動原始碼）。GA_MEASUREMENT_ID 可用環境變數覆寫；本機與預覽網址不會載入 GA。 */
 const { inject } = require('./inject-seo');
 const cfg = inject(root, process.env, dist);
-fs.copyFileSync(path.join(dist, 'index.html'), path.join(dist, '404.html')); // 直接開子路徑時也回到遊戲
+const index = path.join(dist, 'index.html');
+const html = fs.readFileSync(index, 'utf8');
+fs.writeFileSync(index, html.replace('</head>', '<script src="/game-lobby/backend-routing.js"></script>\n</head>'), 'utf8');
+fs.copyFileSync(index, path.join(dist, '404.html')); // 直接開子路徑時也回到遊戲
 console.log('已注入 SEO 與 GA4：' + cfg.siteUrl);
 console.log(`已建置到 dist/（serverUrl = ${url || '(未設定)'}）`);

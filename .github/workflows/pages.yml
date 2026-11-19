@@ -50,7 +50,7 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
-  # 部署後實際打線上網址：頁面、GA4 設定、env.js 的 server URL，以及 Render 後端 /health（冷啟動最多等約 2 分鐘）。
+  # 部署後確認正式站、GA4、伺服器設定與至少一個可用的遊戲後端。
   smoke:
     needs: deploy
     runs-on: ubuntu-latest
@@ -66,9 +66,13 @@ jobs:
           grep -q 'rel="canonical"' index.html
           curl -fsS "${SITE}env.js" -o env.js
           cat env.js
-      - name: 檢查 Render 後端 /health
+      - name: 檢查主站和備援的健康端點
         env:
           SERVER: ${{ inputs.server_url || vars.GAME_SERVER_URL }}
+          STANDBY: https://house-stack-backup.eric-games.workers.dev
         run: |
           if [ -z "$SERVER" ]; then echo "::warning::未設定 GAME_SERVER_URL，略過後端檢查（線上對戰不可用）"; exit 0; fi
-          curl -fsS --max-time 30 --retry 8 --retry-delay 15 --retry-all-errors "${SERVER%/}/health"
+          if ! curl -fsS --max-time 12 "${SERVER%/}/health"; then
+            echo "::warning::主後端無法回應，檢查 Cloudflare 備援"
+            curl -fsS --max-time 12 --retry 2 --retry-delay 3 --retry-all-errors "$STANDBY/health"
+          fi
