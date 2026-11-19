@@ -41,10 +41,16 @@ export function disconnect() {
   net.ever = false;
 }
 
-export function getSocket() { return socket; }
+export function getSocket() {
+  if (!socket && CONFIG.serverUrl && !window.GameBackend?.canRoute(CONFIG.serverUrl)) {
+    return openSocket(CONFIG.serverUrl);
+  }
+  return socket;
+}
 
 export function connect() {
-  if (socket || !CONFIG.serverUrl) return Promise.resolve(socket);
+  const existing = getSocket();
+  if (existing || !CONFIG.serverUrl) return Promise.resolve(existing);
   if (opening) return opening;
   const attempt = generation;
   const selected = window.GameBackend?.select(CONFIG.serverUrl) ?? CONFIG.serverUrl;
@@ -97,9 +103,16 @@ function openSocket(base) {
   return socket;
 }
 
-export async function emit(ev, data, timeout = 9000) {
-  const s = await connect();
-  if (!s || socket !== s) return { ok: false, code: 'offline', msg: t('尚未設定線上伺服器') };
+export function emit(ev, data, timeout = 9000) {
+  const existing = getSocket();
+  if (existing) return emitWhenConnected(existing, ev, data, timeout);
+  return connect().then(s => {
+    if (!s || socket !== s) return { ok: false, code: 'offline', msg: t('尚未設定線上伺服器') };
+    return emitWhenConnected(s, ev, data, timeout);
+  });
+}
+
+function emitWhenConnected(s, ev, data, timeout) {
   return new Promise((resolve) => {
     let done = false;
     const finish = (r) => {
