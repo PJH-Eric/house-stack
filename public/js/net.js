@@ -4,6 +4,8 @@ import { CONFIG } from './config.js';
 import { app } from './core.js';
 
 let socket = null;
+let opening = null;
+let generation = 0;
 const listeners = new Map();
 const pending = new Set();
 export const net = { connected: false, ever: false, onStatus: null, statusHook: null };
@@ -30,6 +32,8 @@ function loc(d, depth = 0) {
 export function on(ev, fn) { listeners.set(ev, fn); }
 
 export function disconnect() {
+  generation++;
+  opening = null;
   for (const cancel of [...pending]) cancel();
   if (socket) socket.disconnect();
   socket = null;
@@ -37,10 +41,27 @@ export function disconnect() {
   net.ever = false;
 }
 
-export function getSocket() {
-  if (!CONFIG.serverUrl) return null;
-  if (socket) return socket;
-  socket = window.io(CONFIG.serverUrl, { transports: ['websocket', 'polling'], reconnectionDelay: 700, reconnectionDelayMax: 3500 });
+export function getSocket() { return socket; }
+
+export function connect() {
+  if (socket || !CONFIG.serverUrl) return Promise.resolve(socket);
+  if (opening) return opening;
+  const attempt = generation;
+  const selected = window.GameBackend?.select(CONFIG.serverUrl) ?? CONFIG.serverUrl;
+  const pendingConnection = Promise.resolve(selected).then(base => {
+    return attempt === generation ? openSocket(base) : null;
+  }).catch(() => {
+    if (attempt === generation) status('down');
+    return null;
+  }).finally(() => {
+    if (opening === pendingConnection) opening = null;
+  });
+  opening = pendingConnection;
+  return opening;
+}
+
+function openSocket(base) {
+  socket = window.io(base, { transports: ['websocket', 'polling'], reconnectionDelay: 700, reconnectionDelayMax: 3500 });
   const currentSocket = socket;
   socket.on('connect', () => {
     const was = net.ever && !net.connected;
@@ -76,10 +97,10 @@ export function getSocket() {
   return socket;
 }
 
-export function emit(ev, data, timeout = 9000) {
+export async function emit(ev, data, timeout = 9000) {
+  const s = await connect();
+  if (!s || socket !== s) return { ok: false, code: 'offline', msg: t('尚未設定線上伺服器') };
   return new Promise((resolve) => {
-    const s = getSocket();
-    if (!s) return resolve({ ok: false, code: 'offline', msg: t('尚未設定線上伺服器') });
     let done = false;
     const finish = (r) => {
       if (done) return;

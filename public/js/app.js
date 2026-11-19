@@ -340,7 +340,7 @@ function leaveOnline(toLobby) {
 let wired = false;
 function wireNet() {
   if (wired) return; wired = true;
-  net.getSocket();
+  void net.connect();
   net.on('room:state', (view) => {
     if (!app.online) return;
     app.online.view = view;

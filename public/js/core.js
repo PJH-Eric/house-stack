@@ -54,7 +54,7 @@ export function inviteLink(roomId, tok) {
   const u = new URL(location.href);
   u.search = ''; u.hash = '';
   u.searchParams.set('room', roomId); u.searchParams.set('t', tok);
-  return u.toString();
+  return window.GameBackend?.pinInvite(u) ?? u.toString();
 }
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
