@@ -18,7 +18,10 @@ function auditPage() {
   const vw = window.innerWidth, vh = window.innerHeight;
   if (document.documentElement.scrollWidth > vw + 1) out.push(`頁面水平溢出 scrollWidth=${document.documentElement.scrollWidth} > ${vw}`);
   for (const el of document.querySelectorAll('select, textarea, input[type=checkbox], input[type=radio], input[type=range], input[type=number], input[type=date], details, dialog')) out.push('原生控制項：' + el.tagName + ' ' + (el.type || ''));
-  for (const el of document.querySelectorAll('input')) if (!el.closest('.tf')) out.push('輸入框未經自訂元件封裝');
+  for (const el of document.querySelectorAll('input')) {
+    if (!el.getClientRects().length || getComputedStyle(el).visibility === 'hidden') continue;
+    if (!el.closest('.tf') && !el.matches('.lc-root .lc-input')) out.push('輸入框未經自訂元件封裝');
+  }
   // 文字被裁切：有文字的元素內容比盒子寬／高，且會被 overflow 或 ellipsis 截掉；或按鈕文字斷成過多行（多語系常見）
   for (const el of document.querySelectorAll('.btn, .sel-btn, .sel-text, .badge, .tg-label, .stat small, .stat b, .turn-banner, h1, h2, h3, .modal-head h2, .rr-main, .rr-sub, .seat, .notice')) {
     const r = el.getBoundingClientRect();
