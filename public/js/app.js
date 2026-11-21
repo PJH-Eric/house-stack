@@ -622,6 +622,15 @@ connectBanner();
     go('lobby');
     return;
   }
+  const saved = net.loadSession();
+  if (saved) {
+    go('lobby');
+    void net.emit('room:resume', saved).then(result => {
+      if (result.ok && !app.online && cur.name === 'lobby') enterRoom(result);
+      else if (result.code === 'closed' || result.code === 'bad_resume') net.saveSession(null);
+    });
+    return;
+  }
   go('home');
 })();
 window.__app = { go, app, store };

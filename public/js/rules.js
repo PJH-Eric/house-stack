@@ -157,7 +157,7 @@
     return TURN_LIMITS.includes(n) ? n : DEFAULT_TURN_SEC;
   }
 
-  function createGame(opts) {
+  function createGame(opts, checkpoint) {
     const diffKey = DIFFICULTIES[opts.difficulty] ? opts.difficulty : 'normal';
     const D = DIFFICULTIES[diffKey];
     const mode = opts.mode === 'versus' ? 'versus' : 'solo';
@@ -198,7 +198,7 @@
     g.height = () => g.floors.length;
     g.axis = () => axisFor(g.floors.length);
 
-    let orbitAngle = 0;
+    let orbitAngle = checkpoint?.orbitAngle ?? 0;
     function speedMul() { return Math.min(D.maxSpeedMul, 1 + D.ramp * (g.floors.length - 1)); }
     /** 下一回合的吊車參數（由種子 + 回合序號決定，所有端點一致）。 */
     g.nextSwing = () => {
@@ -380,6 +380,11 @@
       stability: g.stability(),
     });
 
+    if (checkpoint) Object.assign(g, checkpoint.state);
+    g.checkpoint = () => ({
+      orbitAngle,
+      state: Object.fromEntries(Object.entries(g).filter(([, value]) => typeof value !== 'function')),
+    });
     return g;
   }
 

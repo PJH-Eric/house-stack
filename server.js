@@ -2,7 +2,7 @@
 /**
  * 疊疊高樓 後端：Express（靜態檔 + /health）+ Socket.IO（大廳、房間、對局、聊天）。
  * 環境變數：PORT（預設 3090）、GAME_ALLOWED_ORIGIN（逗號分隔；正式環境務必設定）。
- * 注意（Render 免費層）：服務可能休眠或重啟，房間只存在記憶體，視為可清理的暫時狀態。
+ * HOUSE_ROOM_DB_PATH 設定時，使用 SQLite 保留房間供重啟復原。
  */
 const path = require('path');
 const http = require('http');
@@ -57,7 +57,11 @@ function pushState(room) {
   for (const m of room.members.values()) if (m.sid) io.to(m.sid).emit('room:state', rm.view(room, m.id));
 }
 
+const checkpoints = process.env.HOUSE_ROOM_DB_PATH
+  ? require('./lib/room-checkpoints.js').openCheckpoints(process.env.HOUSE_ROOM_DB_PATH)
+  : null;
 const rm = new RoomManager({
+  checkpoints,
   onEvent(room, ev, data) {
     if (ev === 'state') { pushState(room); pushLobby(); }
     else if (ev === 'removed') afterRemoved(room, data);
@@ -75,36 +79,39 @@ function clearTurnTimer(room) {
   if (room.turnTimer) { clearTimeout(room.turnTimer); room.timers.delete(room.turnTimer); room.turnTimer = null; }
 }
 
-function beginTurn(room) {
-  if (room.closed || room.status !== 'playing' || !room.game || room.game.over) return;
+function beginTurn(room, previousTurn, savedAt) {
+  if (room.closed || room.recovery || room.status !== 'playing' || !room.game || room.game.over) return;
   clearTurnTimer(room);
   const g = room.game;
   const p = g.currentPlayer();
   const sec = g.turnSec || T.DIFFICULTIES[g.difficulty].turnSec;
   const no = g.turnNo + 1;
-  const t0 = Date.now();
+  const now = Date.now();
+  const elapsed = previousTurn?.playerId === p.id && previousTurn.no === no ? Math.max(0, savedAt - previousTurn.t0) : 0;
+  const t0 = now - elapsed;
   const swing = g.swingSpec;
   room.turn = { playerId: p.id, no, t0, deadline: t0 + sec * 1000, last: null, swing };
-  io.to(room.id).emit('game:turn', { playerId: p.id, no, t0, now: t0, deadline: room.turn.deadline, sec, swing, height: g.height(), stability: g.stability() });
+  rm.save(room);
+  io.to(room.id).emit('game:turn', { playerId: p.id, no, t0, now, deadline: room.turn.deadline, sec, swing, height: g.height(), stability: g.stability() });
   if (p.kind === 'ai') {
     const rng = T.mulberry32((g.seed ^ Math.imul(no, 2654435761)) >>> 0);
     let mv;
     try { mv = AI.chooseMove(g, p.ai || 'normal', rng, { tNow: 0 }); } catch (e) { console.error('AI 失敗', e); mv = { d: 0, thinkMs: 1200 }; }
-    rm.timer(room, () => {
+    room.turnTimer = rm.timer(room, () => {
       if (room.game === g && g.currentPlayer().id === p.id && room.turn && room.turn.no === no) doDrop(room, p.id, mv);
-    }, mv.thinkMs);
+    }, Math.max(0, mv.thinkMs - elapsed));
   } else {
     // 逾時：依伺服器時鐘取吊車當下位置自動放下
     room.turnTimer = rm.timer(room, () => {
       const t = (Date.now() - t0) / 1000;
       doDrop(room, p.id, { d: T.swingPos(swing, t), dir: Math.sign(Math.cos(swing.omega * t + swing.phase)) });
-    }, sec * 1000 + 300);
+    }, Math.max(0, sec * 1000 + 300 - elapsed));
   }
   pushLobby();
 }
 
 function doDrop(room, playerId, move) {
-  if (room.closed || room.status !== 'playing' || !room.game) return false;
+  if (room.closed || room.recovery || room.status !== 'playing' || !room.game) return false;
   const g = room.game;
   if (g.over || g.currentPlayer().id !== playerId) return false;
   clearTurnTimer(room);
@@ -112,6 +119,7 @@ function doDrop(room, playerId, move) {
   if (!res) return false;
   room.turn = null;
   if (res.over) room.status = 'ended';
+  rm.save(room);
   io.to(room.id).emit('game:drop', res);
   const wait = (res.toppled ? 2000 : 800);
   rm.timer(room, () => {
@@ -119,6 +127,31 @@ function doDrop(room, playerId, move) {
     else beginTurn(room);
   }, wait);
   return true;
+}
+
+function completeRecovery(room) {
+  if (room.closed || !room.recovery) return;
+  const missing = rm.humans(room).filter(m => !m.connected);
+  if (missing.length && Date.now() < room.recovery.until) return;
+  const { savedAt } = room.recovery;
+  const previousTurn = room.turn;
+  clearTimeout(room.recoveryTimer);
+  room.timers.delete(room.recoveryTimer);
+  room.recovery = null;
+  room.turn = null;
+  if (!rm.humans(room).some(m => m.connected)) {
+    rm.closeRoom(room, '房內已沒有玩家，房間結束');
+    return;
+  }
+  for (const member of [...missing, ...rm.spectators(room).filter(m => !m.connected)]) {
+    afterRemoved(room, rm.removeMember(room, member.id, '斷線超過寬限時間，已離場'));
+  }
+  rm.emit(room, 'state', null);
+  if (!room.turn) beginTurn(room, previousTurn, savedAt);
+}
+
+for (const room of rm.rooms.values()) {
+  room.recoveryTimer = rm.timer(room, () => completeRecovery(room), Math.max(0, room.recovery.until - Date.now()));
 }
 
 function afterRemoved(room, out) {
@@ -218,11 +251,13 @@ io.on('connection', (socket) => {
     const r = rm.resume({ sid, roomId: d.roomId, memberId: d.memberId, key: d.key });
     if (!r.ok) return fail(cb, r.code, '房間已不存在或已結束');
     enter(r.room, r.member, null, cb);
+    completeRecovery(r.room);
   });
 
-  const withRoom = (fn) => (d, cb) => {
+  const withRoom = (fn, allowRecovery = false) => (d, cb) => {
     const loc = rm.locate(sid);
     if (!loc) return fail(cb, 'no_room', '尚未加入房間');
+    if (loc.room.recovery && !allowRecovery) return fail(cb, 'recovering', '正在等待原玩家回到房間');
     return fn(loc.room, loc.member, d || {}, cb);
   };
 
@@ -230,8 +265,9 @@ io.on('connection', (socket) => {
     socket.leave(room.id);
     const out = rm.leave(sid);
     afterRemoved(room, out);
+    completeRecovery(room);
     ok(cb, {});
-  }));
+  }, true));
 
   socket.on('room:settings', withRoom((room, member, d, cb) => (rm.setSettings(room, member.id, d) ? ok(cb, {}) : fail(cb, 'denied'))));
   socket.on('room:ai:add', withRoom((room, member, d, cb) => (rm.addAi(room, member.id, d.level) ? ok(cb, {}) : fail(cb, 'denied', '無法新增電腦'))));
@@ -286,6 +322,10 @@ if (require.main === module) {
 }
 // Render 更新或重啟時會送 SIGTERM：先告知所有房間（顯示「房間已結束」並回大廳），再結束，避免玩家只看到莫名斷線
 function shutdown(sig) {
+  if (checkpoints) {
+    console.log(`Received ${sig}; saved rooms will be available after restart`);
+    process.exit(0);
+  }
   console.log(`收到 ${sig}，通知房間後結束`);
   for (const room of [...rm.rooms.values()]) io.to(room.id).emit('room:closed', { reason: '伺服器更新重啟，房間已結束，請稍後重新建立' });
   setTimeout(() => process.exit(0), 800).unref();

@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "verify": "npm test && node scripts/online-check.js",
+    "verify": "npm test && node scripts/online-check.js && node tests/restart-recovery.cjs",
     "build:pages": "node scripts/build-pages.js",
     "audit": "node scripts/layout-audit.js",
     "screenshots": "node scripts/screenshots.js",

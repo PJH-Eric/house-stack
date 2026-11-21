@@ -12,7 +12,11 @@ export const net = { connected: false, ever: false, onStatus: null, statusHook: 
 const status = (v) => { net.onStatus && net.onStatus(v); net.statusHook && net.statusHook(v); };
 const SESSION_KEY = 'house-stack:session';
 
-export function saveSession(s) { try { s ? sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)) : sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ } }
+export function saveSession(s) {
+  try { s ? sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)) : sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+  if (s) window.GameBackend?.rememberRoom?.();
+  else window.GameBackend?.forgetRoom?.();
+}
 export function loadSession() { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch (e) { return null; } }
 
 /* 伺服器送來的中文訊息（msg／reason／系統聊天）轉成目前語言 */
