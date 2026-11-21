@@ -16,10 +16,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: 單元測試（多語系、GA4、SEO、規則）
-        run: npm test
-      - name: 線上流程實測（開伺服器、邀請、觀戰、斷線重連、零玩家關房、延遲 ping）
-        run: node scripts/online-check.js
+      - name: 規則、線上流程與重啟復原測試
+        run: npm run verify
   browser:
     name: 瀏覽器多語系與版面
     runs-on: ubuntu-latest
