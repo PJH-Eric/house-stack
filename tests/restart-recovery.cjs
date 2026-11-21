@@ -34,7 +34,7 @@ async function exercise(base, restart) {
 
   try {
     const [host, guest] = await Promise.all([connect(base), connect(base)]);
-    const a = await host.call('room:create', { name: 'Recovery Host', maxPlayers: 2, turnLimit: 20 });
+    const a = await host.call('room:create', { name: 'Recovery Host', maxPlayers: 2, turnLimit: 15 });
     assert.ok(a.ok);
     const roomId = a.view.id;
     const b = await guest.call('room:join', { name: 'Recovery Mate', roomId, token: a.view.invite.player });
