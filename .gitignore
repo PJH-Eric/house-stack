@@ -6,3 +6,7 @@ screenshots/
 !.env.example
 *.log
 .DS_Store
+
+/cloudflare/node_modules/
+
+/cloudflare/dist/
