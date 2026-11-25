@@ -68,11 +68,17 @@ jobs:
           cat env.js
       - name: 檢查主站和備援的健康端點
         env:
+          ORACLE: https://house-stack.bomb-squad.duckdns.org
           SERVER: ${{ inputs.server_url || vars.GAME_SERVER_URL }}
           STANDBY: https://house-stack-backup.eric-games.workers.dev
         run: |
-          if [ -z "$SERVER" ]; then echo "::warning::未設定 GAME_SERVER_URL，略過後端檢查（線上對戰不可用）"; exit 0; fi
-          if ! curl -fsS --max-time 12 "${SERVER%/}/health"; then
-            echo "::warning::主後端無法回應，檢查 Cloudflare 備援"
-            curl -fsS --max-time 12 --retry 2 --retry-delay 3 --retry-all-errors "$STANDBY/health"
-          fi
+          for backend in "$ORACLE" "$SERVER" "$STANDBY"; do
+            [ -n "$backend" ] || continue
+            if curl -fsS --max-time 12 "${backend%/}/health"; then
+              echo "健康端點可用：$backend"
+              exit 0
+            fi
+            echo "::warning::後端無法回應：$backend"
+          done
+          echo "::error::Oracle、主後端與 Cloudflare 備援皆無法回應 /health"
+          exit 1
