@@ -19,13 +19,13 @@ function validate(u) {
 let serverUrl = null, error = null;
 if (raw) {
   serverUrl = validate(raw);
-  if (!serverUrl) error = t('GAME_SERVER_URL 格式不正確：{raw}（production 需為 https:// 開頭）', { raw });
+  if (!serverUrl) error = t('線上伺服器設定有誤，目前只能玩單機。');
 } else if (isLocal) {
   serverUrl = location.origin;
 } else if (location.protocol.startsWith('http') && location.port === '' && !/github\.io$/.test(location.hostname)) {
   serverUrl = location.origin; // 前後端同網域部署
 } else {
-  error = t('尚未設定線上伺服器（GAME_SERVER_URL）。單機與對電腦仍可遊玩。');
+  error = t('目前連不上線上伺服器。單機與對電腦仍可遊玩。');
 }
 
 export const CONFIG = { serverUrl, error, onlineAvailable: !!serverUrl };
