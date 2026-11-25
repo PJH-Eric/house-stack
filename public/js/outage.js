@@ -1,18 +1,12 @@
-/* 線上伺服器暫停提示：只在線上大廳／等待房間，連續 30 秒連不上伺服器才跳出（免費主機額度用完或停機時）。
+/* 線上伺服器暫停提示：只在線上大廳／等待房間，連續 30 秒連不上伺服器才跳出（伺服器過載休息或停機時）。
  * 首頁、單機、對局中不計時；連上或離開就取消；同一次故障只提示一次。 */
-import { t, getLang } from './i18n.js';
+import { t } from './i18n.js';
 import { h, Btn, Modal } from './ui.js';
 import { CONFIG } from './config.js';
 import { net } from './net.js';
 
 const WAIT_MS = 30000;
 let timer = 0, modal = null, shownThisOutage = false, eligible = false;
-
-/* 免費額度於次月 1 日重置：中文顯示月份數字，英文顯示「November 1」 */
-export function nextResetText(now = new Date(), lang = getLang()) {
-  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return lang === 'en' ? next.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : String(next.getMonth() + 1);
-}
 
 function cancel() { clearTimeout(timer); timer = 0; }
 function hide() { if (modal) { const m = modal; modal = null; m.close(true); } }
