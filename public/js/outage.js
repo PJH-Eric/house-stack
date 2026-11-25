@@ -22,8 +22,8 @@ function show() {
   if (!eligible || net.connected || shownThisOutage || modal) return;
   shownThisOutage = true;
   modal = Modal({
-    title: t('線上暫時無法連線'), role: 'alertdialog',
-    body: [h('p', null, t('免費伺服器額度將於 {date} 月 1 日重置，期間可繼續遊玩單機版。', { date: nextResetText() }))],
+    title: t('目前伺服器過載休息中'), role: 'alertdialog',
+    body: [h('p', null, t('歡迎贊助升級'))],
     actions: [Btn({ label: t('知道了'), kind: 'primary', onClick: () => hide() })],
     onClose: () => { modal = null; },
   });
