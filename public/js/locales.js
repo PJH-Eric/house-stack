@@ -347,6 +347,7 @@ export const EN = {
   "時間到會自動在吊車目前的位置放下，可能因此放偏。": "When time runs out the floor drops automatically from the crane's current position, so it may land off-target.",
   "每回合限時：{v}": "Turn timer: {v}",
   "回遊戲大廳": "Back to Game Lobby",
+  "贊助": "Sponsor",
   "目前伺服器過載休息中": "The server is overloaded and resting",
   "歡迎贊助升級": "Sponsorships to help us upgrade are welcome",
   "紀錄與成就": "Records & Achievements",

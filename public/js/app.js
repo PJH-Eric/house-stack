@@ -84,9 +84,7 @@ function home() {
   const lobbyLink = h('a', { class: 'lobby-link', href: withLang('https://pjh-eric.github.io/game-lobby/') }, icon('chevL', 16), h('span', null, t('回遊戲大廳')));
   const support = h('a', { class: 'btn home-support', href: SPONSOR_URL, target: '_blank', rel: 'noopener noreferrer' },
     h('span', { 'aria-hidden': 'true' }, '♥'),
-    h('span', { class: 'support-label', lang: 'zh-Hant' }, '贊助'),
-    h('span', { class: 'support-label', lang: 'zh-Hans' }, '赞助'),
-    h('span', { class: 'support-label', lang: 'en' }, 'Sponsor'));
+    h('span', null, t('贊助')));
   const el = h('div', { class: 'home' }, canvas, lobbyLink, support, ScrollArea(h('div', { class: 'home-wrap' }, card), { cls: 'home-scroll' }));
   el.querySelector('.autofocus').dataset.autofocus = '1';
   return {
