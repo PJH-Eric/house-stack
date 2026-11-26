@@ -6,7 +6,7 @@ import { CONFIG } from './config.js';
 import { net } from './net.js';
 
 const WAIT_MS = 30000;
-const SPONSOR_URL = 'https://portaly.cc/pjh-eric/support';
+export const SPONSOR_URL = 'https://portaly.cc/pjh-eric/support';
 const SPONSOR_WORD = { 'zh-Hans': '赞助', en: 'Sponsorships' };
 
 /* 把提示文字中的「贊助」變成贊助連結 */

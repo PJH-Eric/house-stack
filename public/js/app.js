@@ -1,5 +1,5 @@
 /* 疊疊高樓 — 主程式：路由、首頁、開局設定、教學、大廳、房間、設定彈窗、網路事件接線。 */
-import { Outage } from './outage.js';
+import { Outage, SPONSOR_URL } from './outage.js';
 import { Latency } from './latency.js';
 import { LangButton } from './langmenu.js';
 import { t, withLang, onLangChange } from './i18n.js';
@@ -82,7 +82,12 @@ function home() {
       bests.length ? h('p', { class: 'home-best' }, t('個人最高：'), bests.join('　')) : null,
       !online ? h('p', { class: 'home-note' }, t('提示：尚未設定線上伺服器，線上對戰需要部署後端。')) : null);
   const lobbyLink = h('a', { class: 'lobby-link', href: withLang('https://pjh-eric.github.io/game-lobby/') }, icon('chevL', 16), h('span', null, t('回遊戲大廳')));
-  const el = h('div', { class: 'home' }, canvas, lobbyLink, ScrollArea(h('div', { class: 'home-wrap' }, card), { cls: 'home-scroll' }));
+  const support = h('a', { class: 'btn home-support', href: SPONSOR_URL, target: '_blank', rel: 'noopener noreferrer' },
+    h('span', { 'aria-hidden': 'true' }, '♥'),
+    h('span', { class: 'support-label', lang: 'zh-Hant' }, '贊助'),
+    h('span', { class: 'support-label', lang: 'zh-Hans' }, '赞助'),
+    h('span', { class: 'support-label', lang: 'en' }, 'Sponsor'));
+  const el = h('div', { class: 'home' }, canvas, lobbyLink, support, ScrollArea(h('div', { class: 'home-wrap' }, card), { cls: 'home-scroll' }));
   el.querySelector('.autofocus').dataset.autofocus = '1';
   return {
     el,
